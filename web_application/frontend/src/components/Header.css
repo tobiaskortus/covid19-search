@@ -1,0 +1,57 @@
+.custom-search-field {
+    margin: 120px 0px 0px 0px;
+    border-width:  0px 0px 1px 0px;
+    color: #fff;
+    background-color: transparent;
+    font-size: 25px;
+    min-width: 500px;
+}
+
+.icon {
+    width: 30px;
+    height: 30px;
+}
+
+.icon:hover {
+    width: 35px;
+    height: 35px;
+}
+
+.topLeft {
+    position: absolute;
+    top: 25px;
+    left: 20px;
+}
+
+.title {
+    color: white;
+    padding: 0;
+    margin: 0;
+    text-align: left;
+}
+
+textarea:focus, input:focus{
+    outline: none;
+}
+
+::-webkit-input-placeholder {
+    color: #fff;
+}
+:-moz-placeholder {
+    color: #fff;
+   opacity:  1;
+}
+::-moz-placeholder { 
+    color: #fff;
+   opacity:  1;
+}
+:-ms-input-placeholder {
+    color: #fff;
+}
+::-ms-input-placeholder {
+    color: #fff;
+}
+
+::placeholder { 
+    color: #fff;
+}

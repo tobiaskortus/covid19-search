@@ -1,0 +1,8 @@
+{
+  "short_name": "Covid-19 Insights",
+  "name": "Covid-19 Insights - A search engine for covid-19 literature research",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
