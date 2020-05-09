@@ -1,9 +1,9 @@
 .custom-search-field {
-    margin: 120px 0px 0px 0px;
+    margin: 40px 0px 0px 0px;
     border-width:  0px 0px 1px 0px;
     color: #fff;
     background-color: transparent;
-    font-size: 25px;
+    font-size: 18px;
     min-width: 500px;
 }
 
@@ -20,7 +20,7 @@
 .topLeft {
     position: absolute;
     top: 25px;
-    left: 20px;
+    left: 50px;
 }
 
 .title {
