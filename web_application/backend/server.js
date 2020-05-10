@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const client = require('mongodb').MongoClient;
+const natural = require('natural')
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -14,27 +15,45 @@ app.use(express.static(path.join(basePath, 'frontend', 'build')));
 
 const dbUri = 'mongodb://localhost:27017/';
 
-app.get('/api/version', (req, res) => {
-    console.log('request for /api/version')
-    res.send({express: 'v1.0 - alpha'});
-});
+intersect = (data) => {
+    cleaned_data = data.map(stem => stem['doc_ids'].map(document => document.doc_id))
+    intersection = cleaned_data.reduce((a, b) => a.filter(c => b.includes(c)));
+    return intersection;
+}
 
-//TODO: manage search queries
 app.get('/search', (req, res) => {
-
-});
-
-app.get('/document', (req, res) => {
-    const doc_id = parseInt(req.query.doc_id);
+    const searchTerm = req.query.term;
+    natural.PorterStemmer.attach();
+    const stemmed_tokens = searchTerm.tokenizeAndStem()
 
     client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
         if (err) throw err;
         const dbo = db.db('covid_19');
-        const query = {_id: doc_id};
+        const query = {_id: {$in: [...stemmed_tokens]}};
 
-        dbo.collection('document_index').findOne(query).then((doc) => {
-            console.log(doc);
-            res.status(200).send(doc);
+        dbo.collection('reversed_index').find(query).toArray((err, data) => {
+            if (err) throw err;
+            data = (data.length === 0) ? data : intersect(data)
+            console.log(`Found ${data.length} entries for query ${searchTerm}`);
+            res.status(200).send(data);
+        });
+    }); 
+});
+
+app.get('/document', (req, res) => {
+    const doc_id_str = req.query.doc_id;
+    const doc_ids = doc_id_str.split(",").map(Number)
+
+    console.log(`Loaded ${doc_ids.length} documents from mongodb`);
+
+    client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
+        if (err) throw err;
+        const dbo = db.db('covid_19');
+        const query = {_id: {$in: [...doc_ids]}};
+
+        dbo.collection('document_index').find(query).toArray((err, data) => {
+             if (err) throw err;
+            res.status(200).send(data);
         });
     }); 
 });

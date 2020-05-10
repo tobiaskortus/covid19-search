@@ -9,6 +9,24 @@ import { Image } from 'react-bootstrap'
 //TODO: Make header reactive 
 
 export class Header extends Component {
+
+    constructor() {
+        super()
+        this.state = {
+            searchTerm: ""
+        }
+    }
+
+    handleChange = (e) => {
+        this.setState({searchTerm: e.target.value})
+    }
+
+    handleKeyDown = (e) => {
+        if (e.keyCode === 13) {
+            this.props.submit(this.state.searchTerm)
+        }
+    }
+
     render() {
         return (
             <div style={{width: '100%', height: '200px'}}>
@@ -18,8 +36,13 @@ export class Header extends Component {
                         <h1 className='title'>Covid-19 Insights</h1>
                         <h6 className='title'>A search engine for covid-19 literature research</h6>
                     </div>
-                    <input className='custom-search-field' type='text' placeholder='What are you looking for ?'/>
-                    <Image src={search} className='icon'/>
+                    <input  className='custom-search-field' 
+                            type='text' 
+                            placeholder='What are you looking for ?'
+                            value={this.state.searchTerm} 
+                            onChange={this.handleChange}
+                            onKeyDown={this.handleKeyDown} />
+                    <Image onClick={() => this.props.submit(this.state.searchTerm.bind(this))} src={search} className='icon'/>
                 </div>
             </div>
         )
