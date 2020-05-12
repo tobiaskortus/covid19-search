@@ -13,7 +13,7 @@ class DataLoader:
         concat_text = ''
 
         for block in self.json[txt_type]:
-            concat_text += block['text'].lower()
+            concat_text += block['text']
 
         return concat_text
 
