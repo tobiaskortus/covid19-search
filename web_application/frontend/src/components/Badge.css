@@ -1,0 +1,22 @@
+.badge {
+    background-color: #fff;
+    height: 25px;
+    border: 2px solid #292E49;
+    display: inline-block;
+    margin: 0px 5px 5px 0px;
+}
+
+.badge:hover {
+    background-color: #ccd8df;
+    height: 25px;
+    border: 2px solid #292E49;
+    display: inline-block;
+    margin: 0px 5px 5px 0px;
+    transform: scale(1.05);
+}
+
+.badge-text {
+    color: #292E49;
+    text-align: center;
+    margin: 0px 10px 0px 10px;
+}

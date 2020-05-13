@@ -1,7 +1,8 @@
 import './Header.css'
-
-import background from '../assets/images/background.jpg'
 import search from '../assets/icons/search-white-18dp.svg'
+import {ReactComponent as VirusIcon} from '../assets/icons/virus.svg'
+
+import Particles from 'react-particles-js';
 
 import React, { Component } from 'react'
 import { Image } from 'react-bootstrap'
@@ -12,14 +13,10 @@ export class Header extends Component {
 
     constructor() {
         super()
-        this.state = {
-            searchTerm: ""
-        }
+        this.state = { searchTerm: "" }
     }
 
-    handleChange = (e) => {
-        this.setState({searchTerm: e.target.value})
-    }
+    handleChange = (e) => this.setState({searchTerm: e.target.value})
 
     handleKeyDown = (e) => {
         if (e.keyCode === 13) {
@@ -27,14 +24,26 @@ export class Header extends Component {
         }
     }
 
+    //<Image src={background} style={{zIndex: '-1', height: '100%', width: '100%'}}/>//
+
     render() {
         return (
-            <div style={{width: '100%', height: '200px'}}>
-                <Image src={background} style={{zIndex: '-1', height: '100%', width: '100%'}}/>
+            <div className='header-collapsed'>
+               <Particles params={{"particles": {
+                    "number": {
+                        "value": 150,
+                        "density": {
+                            "enable": true,
+                            "value_area": 1803.4120608655228
+                        }
+                    }}}}/>
                 <div className='topLeft'>
-                    <div>
-                        <h1 className='title'>Covid-19 Insights</h1>
-                        <h6 className='title'>A search engine for covid-19 literature research</h6>
+                    <div style={{display: 'flex'}}>
+                        <VirusIcon className='app-icon'/>
+                        <div style={{paddingLeft: '15px'}}>
+                            <h1 className='title'>Covid-19 Insights</h1>
+                            <h6 className='title'>A search engine for covid-19 literature research</h6>
+                        </div>
                     </div>
                     <input  className='custom-search-field' 
                             type='text' 
@@ -42,7 +51,8 @@ export class Header extends Component {
                             value={this.state.searchTerm} 
                             onChange={this.handleChange}
                             onKeyDown={this.handleKeyDown} />
-                    <Image onClick={() => this.props.submit(this.state.searchTerm.bind(this))} src={search} className='icon'/>
+                        
+                    <Image onClick={() => this.props.submit(this.state.searchTerm.bind(this))} src={search} className='search-icon'/>
                 </div>
             </div>
         )
