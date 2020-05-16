@@ -70,6 +70,16 @@ class Lemmatizer(NLPTransformer):
     def transform(self, X):
         return [self.lemmatizer.lemmatize(token) for token in X]
     
+    
+class NonAlphanumericRemover(NLPTransformer):
+    def __init__(self):
+        import re
+        self.regex = re.compile(r'[^A-Za-z0-9]+')
+        
+    def transform(self, X):
+        return [self.regex.sub('', token) for token in X]
+    
+    
 class SymbolRemover(NLPTransformer):
     def __init__(self):
         import string
