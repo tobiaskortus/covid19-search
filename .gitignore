@@ -26,6 +26,7 @@ dataset
 
 #TODO: Remove in future
 database 
+doc
 
 #vscode
 .vscode
@@ -33,3 +34,5 @@ database
 __pycache__/
 .ipynb_checkpoints
 .ipynb_checkpoints/*.ipynb
+
+

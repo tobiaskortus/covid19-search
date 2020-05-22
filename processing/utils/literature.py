@@ -1,5 +1,9 @@
 import json
 import pycld2 as cld2
+from os import getcwd, pardir
+from os import listdir
+from os.path import isfile, join
+from glob import glob
 
 class DataLoader:
     def __init__(self, path):
@@ -21,6 +25,20 @@ class DataLoader:
     def get_title(self):
         return self.json['metadata']['title']
 
+
+def get_files(root_dir):
+    json_paths = [
+        join(root_dir, 'arxiv', 'arxiv', 'pdf_json'),
+        join(root_dir, 'arxiv', 'arxiv', 'pdf_json'),
+        join(root_dir, 'comm_use_subset', 'comm_use_subset', 'pdf_json'),
+        join(root_dir, 'noncomm_use_subset', 'noncomm_use_subset', 'pdf_json'),
+        join(root_dir, 'custom_license', 'custom_license', 'pdf_json'),
+        join(root_dir, 'biorxiv_medrxiv', 'biorxiv_medrxiv', 'pdf_json'),
+    ]
+
+    files = []
+    [files.extend(glob(join(path, '*.json'))) for path in json_paths]
+    return files
 
 def get_full_text(fpath, dl=None):
     if dl is None: dl = DataLoader(fpath)

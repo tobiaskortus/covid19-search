@@ -25,6 +25,7 @@ export class Header extends Component {
     }
 
     //<Image src={background} style={{zIndex: '-1', height: '100%', width: '100%'}}/>//
+    //<VirusIcon className='app-icon'/>
 
     render() {
         return (
@@ -39,8 +40,7 @@ export class Header extends Component {
                     }}}}/>
                 <div className='topLeft'>
                     <div style={{display: 'flex'}}>
-                        <VirusIcon className='app-icon'/>
-                        <div style={{paddingLeft: '15px'}}>
+                        <div style={{paddingLeft: '0px'}}>
                             <h1 className='title'>Covid-19 Insights</h1>
                             <h6 className='title'>A search engine for covid-19 literature research</h6>
                         </div>

@@ -19,28 +19,33 @@ const dbUri = 'mongodb://localhost:27017/';
 
 mergeIntersect = (L1, L2) => {
     R = []
-    var i = 0;
-    var j = 0;
-    var u = L1[0];
-    var v = L2[0];
+    var i = 0; var j = 0; var u = L1[0]; var v = L2[0];
 
     while(i < L1.length && j < L2.length) {
         if (u['doc_id'] < v['doc_id']) {
-            i++;
-            u = L1[i];
+            i++; u = L1[i];
         }
         else if (u['doc_id'] > v['doc_id']) {
-            j++;
-            v = L2[j];
+            j++; v = L2[j];
         } else {
             R.push({doc_id: u['doc_id'], rank: u['rank']+ v['rank']});
-            i++; j++;
-            u = L1[i]; v = L2[j];
+            i++; j++; u = L1[i]; v = L2[j];
         }
     }
 
     //Sort descending
     return R;
+}
+
+merge = (L1, L2) => {
+    concat = L1.concat(L2);
+    return merged = concat.reduce((accumulator, cur) => {
+        let phrase = cur['keyphrase'];
+        let found = accumulator.find(elem => elem['keyphrase'] === phrase)
+        if (found) found['score'] = found['score']; //Do not sum up !!
+        else accumulator.push(cur);
+        return accumulator;
+      }, []);
 }
 
 getNormalizationFactors = (data) => {
@@ -94,6 +99,25 @@ intersect = (data) => {
     return intersected;
 }
 
+var groupBy = function(xs, key) {
+    return xs.reduce(function(rv, x) {
+      (rv[x[key]] = rv[x[key]] || []).push(x);
+      return rv;
+    }, {});
+  };
+  
+
+merge_keyphrases_and_select_first_n = (data, n=10) => {
+    var merged = data[0]['keyphrases']
+
+    for(var i = 0; i < data.length - 1; i++) {
+        merged = merge(merged, data[i+1]['keyphrases'])
+    }
+
+    merged_sorted = merged.sort((a, b) => {return b['score'] - a['score']}); //Sort descending
+    return merged_sorted.slice(0, n);
+}
+
 app.get('/search', (req, res) => {
     const searchTerm = req.query.term;
     natural.PorterStemmer.attach();
@@ -105,13 +129,25 @@ app.get('/search', (req, res) => {
         const dbo = db.db('covid_19');
         const query = {_id: {$in: [...stemmed_tokens]}};
 
+        var doc_id_res = []
+        var keyphrases_res = []
+        
         dbo.collection('inverted_index').find(query).toArray((err, data) => {
             if (err) throw err;
             data = (data.length === 0) ? data : intersect(data)
             data_sorted = data.sort((a, b) => {return b['rank'] - a['rank']}); //Sort descending
-            data_sorted_reduced = data_sorted.map(x => x['doc_id']);
-            console.log(`Found ${data_sorted_reduced.length} entries for query ${searchTerm}`);
-            res.status(200).send(data_sorted_reduced);
+            doc_id_res = data_sorted.map(x => x['doc_id']);
+
+            keyphrase_query = {_id: {$in: [...doc_id_res]}}
+
+            dbo.collection('keyphrase_index').find(keyphrase_query).toArray((err, data) => {
+                if(err) throw err;
+                keyphrases_res = (data.length == 0) ? data : merge_keyphrases_and_select_first_n(data, n=10);
+                keyphrases_res = keyphrases_res.map(x => x['keyphrase']);
+                
+                console.log(`Found ${doc_id_res.length} entries for query ${searchTerm}`);
+                res.status(200).send({doc_ids: doc_id_res, keyphrases: keyphrases_res});
+            });    
         });
     }); 
 });

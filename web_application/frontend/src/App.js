@@ -23,6 +23,7 @@ class App extends Component {
                 */
             ],
             similarTopics: [
+                /*
                 'covid-19', 'sars-cov-2', 
                 'transmission', 'vaccine', 
                 'host cell', 'interdomain salt bridges', 
@@ -31,6 +32,7 @@ class App extends Component {
                 'host cell', 'interdomain salt bridges', 
                 'md trajectory', 'oxygen',
                 'patient pathway', 'expiratory pressure'
+                */
             ]
         };
     }
@@ -53,7 +55,12 @@ class App extends Component {
 
         fetch(`/search?term=${encodeURIComponent(searchTerm)}`)
             .then(res => res.json())
-            .then(json => that.setState({searchResults: json}, () => that.loadDocuments(0, 10, that)));
+            .then(json => {
+                var doc_ids = json['doc_ids'];
+                var keyphrases = json['keyphrases'];
+                that.setState({searchResults: doc_ids}, () => that.loadDocuments(0, 10, that));
+                that.setState({similarTopics: keyphrases});
+            });
     }
 
     render() {
