@@ -25,6 +25,9 @@ class DataLoader:
     def get_title(self):
         return self.json['metadata']['title']
 
+    def get_authors(self):
+        return [f"{author['first']} {''.join(author['middle'])}{' ' if len(author['middle']) != 0 else ''}{author['last']}" for author in self.json['metadata']['authors']]
+
 
 def get_files(root_dir):
     json_paths = [
@@ -55,6 +58,10 @@ def get_body_text(fpath, dl=None):
 def get_document_title(fpath, dl=None):
     if dl is None: dl = DataLoader(fpath)
     return dl.get_title()
+
+def get_authors(fpath, dl=None):
+    if dl is None: dl = DataLoader(fpath)
+    return dl.get_authors()
 
 def is_english(text):
     is_reliable, _, details = cld2.detect(text)

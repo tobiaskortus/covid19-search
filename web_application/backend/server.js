@@ -99,15 +99,7 @@ intersect = (data) => {
     return intersected;
 }
 
-var groupBy = function(xs, key) {
-    return xs.reduce(function(rv, x) {
-      (rv[x[key]] = rv[x[key]] || []).push(x);
-      return rv;
-    }, {});
-  };
-  
-
-merge_keyphrases_and_select_first_n = (data, n=10) => {
+mergeAndSelectFirstN = (data, n=10) => {
     var merged = data[0]['keyphrases']
 
     for(var i = 0; i < data.length - 1; i++) {
@@ -138,11 +130,11 @@ app.get('/search', (req, res) => {
             data_sorted = data.sort((a, b) => {return b['rank'] - a['rank']}); //Sort descending
             doc_id_res = data_sorted.map(x => x['doc_id']);
 
-            keyphrase_query = {_id: {$in: [...doc_id_res]}}
+            keyphrase_query = {_id: {$in: [...doc_id_res.slice(0, Math.min(10, doc_id_res.length))]}}
 
             dbo.collection('keyphrase_index').find(keyphrase_query).toArray((err, data) => {
                 if(err) throw err;
-                keyphrases_res = (data.length == 0) ? data : merge_keyphrases_and_select_first_n(data, n=10);
+                keyphrases_res = (data.length == 0) ? data : mergeAndSelectFirstN(data, n=10);
                 keyphrases_res = keyphrases_res.map(x => x['keyphrase']);
                 
                 console.log(`Found ${doc_id_res.length} entries for query ${searchTerm}`);
