@@ -5,8 +5,17 @@ export class Documents extends Component {
         console.log(this.props.documents);
         return this.props.documents.map((document) => (
             <div>
-                <a href="#" style={{fontSize: "15px", color: 'black'}}>{document.document_title}</a>
-                <p style={{fontSize: "10px"}}>{document._id}</p>
+                <a href="#" style={{fontSize: "15px", color: 'black'}}>{document.document_title}</a> 
+                <br/>
+                {
+                    document.authors.slice(0, Math.min(4, document.authors.length)).map(author => {
+                        return(
+                            <a href="#" style={{fontSize: "12px", color: 'green'}}> {author} ·</a>
+                        )
+                    })
+                }
+                <br/>
+                <p style={{fontSize: "12px"}}>{document.abstract}</p>
             </div>
         ))
     }
