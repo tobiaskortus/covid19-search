@@ -5,6 +5,11 @@ from zipfile import ZipFile
 import pandas as pd
 import pickle
 
+try:
+    from cfuzzyset import cFuzzySet as FuzzySet
+except ImportError:
+    from fuzzyset import FuzzySet
+
 
 class GridLookup:
 
@@ -15,7 +20,7 @@ class GridLookup:
     GRID_DATA_CSV = 'grid.csv'
     GRID_DATA_DICT = 'grid_dict.pkl'
 
-    def __init__(self):
+    def __init__(self, use_fuzzy_matching=True):
         if not isdir(self.GRID_DATA_ROOT):
             mkdir(self.GRID_DATA_ROOT)
 
@@ -25,11 +30,17 @@ class GridLookup:
                 raise Exception('Failed downloading grid dataset from https://www.grid.ac/')
 
         if not isfile(join(self.GRID_DATA_ROOT, self.GRID_DATA_DICT)):
-            data = self.__load_csv(join(self.GRID_DATA_ROOT, self.GRID_DATA_CSV))
+            csv_path = join(self.GRID_DATA_ROOT, self.GRID_DATA_CSV)
+            data = self.__load_csv(csv_path)
             self.data_dict = self.__get_dict_from_pd(data)
             self.__save_dict(self.data_dict)
         else:
             self.data_dict = self.__load_dict()
+
+        self.use_fuzzy_matching = use_fuzzy_matching
+        if use_fuzzy_matching:
+            self.fuzzy_set = FuzzySet()
+            [self.fuzzy_set.add(x) for x in self.data_dict];
 
 
     def __download_dataset(self):
@@ -64,5 +75,24 @@ class GridLookup:
         with open(join(self.GRID_DATA_ROOT, 'grid_dict.pkl'), 'rb') as f:
             return pickle.load(f)
 
+    def __fuzzy_match_institution(self, name):
+        result = self.fuzzy_set.get(name)
+
+        if result is None or len(result) == 0: 
+            return None
+
+        score, match = result[0]
+        return match if score > 0.90 else None
+
     def get_institution(self, name):
-        return self.data_dict.get(name)
+        if name is None: return None
+        institution = self.data_dict.get(name)
+        if self.use_fuzzy_matching and institution is None:
+            matched_name = self.__fuzzy_match_institution(name)
+            if matched_name is None:
+                return None
+            return self.data_dict.get(matched_name)
+        return institution
+
+    def get_all_institutions(self):
+        return self.data_dict.keys()

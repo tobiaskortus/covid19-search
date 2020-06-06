@@ -52,19 +52,22 @@ class DataLoader:
         if plausibility_check:
             is_name = self.__is_name(first_name, middle_name, last_name)
 
-        return f"{first_name}{middle_name}{last_name}" if is_name else None
+
+        author = f"{first_name}{middle_name}{last_name}" if is_name else None
+        return (author, is_name)
 
     def __parse_institution(self, institution_raw, plausibility_check=False):
         """
         TODO: add additional information from grid (e.g. Location of institution)
         """
         institution = institution_raw
+        is_institution = True
 
         if plausibility_check:
                 is_institution = self.grid_lookup.get_institution(institution) != None
                 institution = institution if is_institution else None
 
-        return institution
+        return institution, is_institution
 
 
     def get_authors(self, plausibility_check=True, clean_names=True):
@@ -72,11 +75,11 @@ class DataLoader:
 
         for author in self.json['metadata']['authors']:
 
-            institution = self.__parse_institution(
+            institution, _ = self.__parse_institution(
                 institution_raw=author['affiliation'].get('institution'),
                 plausibility_check=plausibility_check)
 
-            author = self.__parse_author(
+            author, _ = self.__parse_author(
                 raw_author=author,
                 clean_names=clean_names, 
                 plausibility_check=plausibility_check)
@@ -84,6 +87,31 @@ class DataLoader:
             authors.append((author, institution))
 
         return authors
+
+    def get_authors_statistic(self, plausibility_check=True, clean_names=True):
+        matched_authors = 0
+        matched_institutions = 0
+        nones = 0
+        total = len(self.json['metadata']['authors'])
+
+        for author in self.json['metadata']['authors']:
+
+            if author['affiliation'].get('institution') is None:
+                nones+=1
+
+            _, is_institution = self.__parse_institution(
+                institution_raw=author['affiliation'].get('institution'),
+                plausibility_check=plausibility_check)
+
+            _, is_author = self.__parse_author(
+                raw_author=author,
+                clean_names=clean_names, 
+                plausibility_check=plausibility_check)
+            
+            if is_author: matched_authors+=1
+            if is_institution: matched_institutions+=1
+
+        return (matched_authors, matched_institutions, total, nones)
 
 
     def get_bib_entries(self):
