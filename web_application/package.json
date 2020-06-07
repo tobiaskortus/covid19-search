@@ -10,6 +10,7 @@
   },
   "author": "tobiaskortus",
   "dependencies": {
+    "@material-ui/lab": "^4.0.0-alpha.55",
     "concurrently": "^5.2.0"
   }
 }

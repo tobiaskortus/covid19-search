@@ -1,14 +1,10 @@
 import './Header.css'
 import search from '../assets/icons/search-white-18dp.svg'
-import {ReactComponent as VirusIcon} from '../assets/icons/virus.svg'
-
 import Particles from 'react-particles-js';
-
 import React, { Component } from 'react'
 import { Image } from 'react-bootstrap'
 
 //TODO: Make header reactive 
-
 export class Header extends Component {
 
     constructor() {
