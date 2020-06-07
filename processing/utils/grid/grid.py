@@ -10,9 +10,68 @@ try:
 except ImportError:
     from fuzzyset import FuzzySet
 
+#TODO: Add abstract base class for Lookup classes
+
+
+class CountryCodeLookup:
+    """
+    TODO: Add fuzzy matching
+    """
+    GRID_DIR = dirname(realpath(__file__))
+    GRID_DATA_ROOT = join(GRID_DIR, 'data')
+    COUNTRY_CODES_URL = 'https://datahub.io/core/country-list/r/data.csv'
+    COUNTRY_CODES_CSV = 'coutry_codes.csv'
+    COUNTRY_CODES_PKL = 'country_codes.pkl'
+
+    def __init__(self):
+        if not isdir(self.GRID_DATA_ROOT):
+            mkdir(self.GRID_DATA_ROOT)
+
+        if not isfile(join(self.GRID_DATA_ROOT, self.COUNTRY_CODES_CSV)):
+            sucess = self.__download_dataset()
+            if not sucess:
+                raise Exception('Failed downloading grid dataset from https://www.grid.ac/')
+
+        if not isfile(join(self.GRID_DATA_ROOT, self.COUNTRY_CODES_PKL)):
+            csv_path = join(self.GRID_DATA_ROOT, self.COUNTRY_CODES_CSV)
+            data = self.__load_csv(csv_path)
+            self.data_dict = self.__get_dict_from_pd(data)
+            self.__save_dict(self.data_dict)
+        else:
+            self.data_dict = self.__load_dict()
+        
+    def __download_dataset(self,):
+        try:
+            download_file(self.COUNTRY_CODES_URL, join(self.GRID_DATA_ROOT, self.COUNTRY_CODES_CSV))
+            return True
+        except:
+            return False
+
+    def __load_csv(self, path):
+        return pd.read_csv(path)
+
+    def __get_dict_from_pd(self, data):
+        data_dict = dict()
+        for _, row in data.iterrows():
+            data_dict[row.Name] = row.Code
+        return data_dict
+
+    def __save_dict(self, grid_dict):
+        with open(join(self.GRID_DATA_ROOT, self.COUNTRY_CODES_PKL), 'wb') as f:
+            pickle.dump(grid_dict, f, pickle.HIGHEST_PROTOCOL)
+
+    def __load_dict(self):
+        with open(join(self.GRID_DATA_ROOT, self.COUNTRY_CODES_PKL), 'rb') as f:
+            return pickle.load(f)
+
+    def get_raw_dict(self):
+        return self.data_dict
+
+    def get_country_code(self, name):
+        return self.data_dict.get(name)
+
 
 class GridLookup:
-
     GRID_DATASET_ZIP_NAME = 'grid.zip'
     GRID_DATASET_URL = 'https://digitalscience.figshare.com/ndownloader/files/22091379'
     GRID_DIR = dirname(realpath(__file__))
@@ -21,6 +80,8 @@ class GridLookup:
     GRID_DATA_DICT = 'grid_dict.pkl'
 
     def __init__(self, use_fuzzy_matching=True):
+        self.country_lookup = CountryCodeLookup()
+
         if not isdir(self.GRID_DATA_ROOT):
             mkdir(self.GRID_DATA_ROOT)
 
@@ -63,7 +124,11 @@ class GridLookup:
     def __get_dict_from_pd(self, data):
         data_dict = dict()
         for _, row in data.iterrows():
-            data_dict[row.Name] = {'ID': row.ID, 'City': row.City, 'State': row.State, 'Country': row.Country}
+            code = self.country_lookup.get_country_code(row.Country)
+            data_dict[row.Name] = {
+                'Name': row.Name, 
+                'Country': row.Country, 
+                'Code': code if code is not None else 'undefined'} #TODO: Fix missing country codes (e.g. South Korea)
         return data_dict
 
     def __save_dict(self, grid_dict):

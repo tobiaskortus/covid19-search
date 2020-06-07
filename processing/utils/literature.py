@@ -60,12 +60,19 @@ class DataLoader:
         """
         TODO: add additional information from grid (e.g. Location of institution)
         """
-        institution = institution_raw
+        institution = {
+                'Name': institution_raw, 
+                'Country': 'undefined', 
+                'Code': 'undefined'}
+
         is_institution = True
 
         if plausibility_check:
-                is_institution = self.grid_lookup.get_institution(institution) != None
-                institution = institution if is_institution else None
+                is_institution = self.grid_lookup.get_institution(institution_raw) != None
+                institution = self.grid_lookup.get_institution(institution_raw) if is_institution else None
+        else:
+                is_institution_tmp = self.grid_lookup.get_institution(institution_raw) != None
+                institution = self.grid_lookup.get_institution(institution_raw) if is_institution_tmp else institution
 
         return institution, is_institution
 
@@ -74,7 +81,6 @@ class DataLoader:
         authors = []
 
         for author in self.json['metadata']['authors']:
-
             institution, _ = self.__parse_institution(
                 institution_raw=author['affiliation'].get('institution'),
                 plausibility_check=plausibility_check)
