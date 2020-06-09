@@ -3,19 +3,24 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const client = require('mongodb').MongoClient;
 const natural = require('natural')
+const RedisClient = require('redis').createClient;
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 const basePath = path.resolve(__dirname, '..');
 
-const rank_weights = [0.55, 0.25, 0.2]
-
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static(path.join(basePath, 'frontend', 'build')));
 
-const dbUri = 'mongodb://localhost:27017/';
+const rank_weights = [0.55, 0.25, 0.2]
+const dbUri = 'mongodb://localhost:27017/';    //sudo systemctl start mongod
+const redis = RedisClient(27018, 'localhost'); //redis-server --maxmemory 10mb --maxmemory-policy allkeys-lru --port 27018
+
+redis.on("error", (err) => {
+    throw err;
+ });
 
 mergeIntersect = (L1, L2) => {
     R = []
@@ -110,56 +115,159 @@ mergeAndSelectFirstN = (data, n=10) => {
     return merged_sorted.slice(0, n);
 }
 
+processDocumentQueryResult = (data) => {
+    data = (data.length === 0) ? data : intersect(data);
+    const data_sorted = data.sort((a, b) => {return b['rank'] - a['rank']}); //Sort descending
+    const doc_ids = data_sorted.map(x => x['doc_id']);
+    const keyphrase_query = {_id: {$in: [...doc_ids.slice(0, Math.min(10, doc_ids.length))]}};
+    return {doc_ids: doc_ids, keyphrase_query: keyphrase_query};
+}
+
+processKeyphraseQueryResult = (data) => {
+    var keyphrases = (data.length == 0) ? data : mergeAndSelectFirstN(data, n=10);
+    return keyphrases.map(x => x['keyphrase']);
+}
+
+getQeryFromTerm = (searchTerm) => {
+    natural.PorterStemmer.attach();
+    stemmedTokens = searchTerm.tokenizeAndStem()
+    return {_id: {$in: [...stemmedTokens]}};
+}
+
+getKeyphrasesFromMongodb = (query, dbo) => {
+    var promise = new Promise((resolve, reject) => {
+        dbo.collection('keyphrase_index').find(query).toArray((err, data) => {
+            if(err) throw err;
+            const keyphrases = processKeyphraseQueryResult(data)
+            resolve(keyphrases)
+        });  
+    })
+
+    return promise;
+}
+
+getDocumentIdsFromMongodb = (query, dbo) => {
+    var promise = new Promise((resolve, reject) => {
+        dbo.collection('inverted_index').find(query).toArray((err, data) => {
+            const result = processDocumentQueryResult(data);
+            resolve(result);
+        });
+    })
+
+    return promise;
+}
+
+getDataFromCache = async(query, client) => {
+    var promise = new Promise((resolve, reject) => {
+        const redisQuery = query._id.$in.join('_');
+        client.get(redisQuery, (err, data) => {
+            if (err) throw err;
+            if(data) {
+                const result = JSON.parse(data);
+                console.log('Loaded from cache');
+                resolve(result)
+            } else {
+                console.log('Query is not cached in database');
+                resolve({doc_ids: undefined, keyphrases: undefined})
+            }
+        });
+    });
+
+    return promise;
+}
+
+getDocumentsFromMongodb = (doc_ids) => {
+    var promise = new Promise((resolve, reject) => {
+        //TODO: Fetch Data from mongodb
+        client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
+            if (err) throw err;
+            const dbo = db.db('covid_19');
+            const query = {_id: {$in: [...doc_ids]}};
+
+            dbo.collection('document_index').find(query).toArray((err, data) => {
+                if (err) throw err;
+                resolve(data)
+            });
+        }); 
+    });
+    
+    return promise;
+}
+
+addDataToCache = (query, doc_ids, keyphrases, client) => {
+    var promise = new Promise((resolve, reject) => {
+        const redisQuery = query._id.$in.join('_');
+        const data_obj = { doc_ids: doc_ids, keyphrases: keyphrases };
+        const data_obj_str = JSON.stringify(data_obj);
+        client.set(redisQuery, data_obj_str, (err) => {
+            if (err) throw err;
+            resolve(true);
+        });
+    });
+
+    return promise;
+}
+
+createQuery = (stemmedTokens) => {
+    return {_id: {$in: [...stemmedTokens]}};
+}
+
 app.get('/search', (req, res) => {
     const searchTerm = req.query.term;
-    natural.PorterStemmer.attach();
-    const stemmed_tokens = searchTerm.tokenizeAndStem()
-    console.log(stemmed_tokens)
+    const page = parseInt(req.query.page);
+    const numDocuments = parseInt(req.query.numDocuments);
+    const query = getQeryFromTerm(searchTerm);
 
-    client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
-        if (err) throw err;
-        const dbo = db.db('covid_19');
-        const query = {_id: {$in: [...stemmed_tokens]}};
-
-        var doc_id_res = []
-        var keyphrases_res = []
-        
-        dbo.collection('inverted_index').find(query).toArray((err, data) => {
-            if (err) throw err;
-            data = (data.length === 0) ? data : intersect(data)
-            data_sorted = data.sort((a, b) => {return b['rank'] - a['rank']}); //Sort descending
-            doc_id_res = data_sorted.map(x => x['doc_id']);
-
-            keyphrase_query = {_id: {$in: [...doc_id_res.slice(0, Math.min(10, doc_id_res.length))]}}
-
-            dbo.collection('keyphrase_index').find(keyphrase_query).toArray((err, data) => {
-                if(err) throw err;
-                keyphrases_res = (data.length == 0) ? data : mergeAndSelectFirstN(data, n=10);
-                keyphrases_res = keyphrases_res.map(x => x['keyphrase']);
+    getDataFromCache(query, redis).then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
+        if(x.doc_ids == undefined || x.keyphrases == undefined) {
+            client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
+                if (err) throw err;
                 
-                console.log(`Found ${doc_id_res.length} entries for query ${searchTerm}`);
-                res.status(200).send({doc_ids: doc_id_res, keyphrases: keyphrases_res});
-            });    
-        });
-    }); 
-});
+                const dbo = db.db('covid_19');
+                
+                //Fetch document ids from database
+                getDocumentIdsFromMongodb(query, dbo).then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
 
-app.get('/document', (req, res) => {
-    const doc_id_str = req.query.doc_id;
-    const doc_ids = doc_id_str.split(",").map(Number)
+                    const doc_ids = x.doc_ids;
+                    const keyphrasesQuery = x.keyphrase_query;
 
-    console.log(`Loaded ${doc_ids.length} documents from mongodb`);
+                    //Fetch keyphrases ids from database
+                    getKeyphrasesFromMongodb(keyphrasesQuery, dbo).then((keyphrases) => {
 
-    client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
-        if (err) throw err;
-        const dbo = db.db('covid_19');
-        const query = {_id: {$in: [...doc_ids]}};
+                        addDataToCache(query, doc_ids, keyphrases, redis).then((success) => {
+                            if(success == true) {
+                                console.log('Added data to cache')
+                            }
+                        });
+                        
+                        
+                        //Fetch document data from database
+                        const pages = Math.ceil(doc_ids.length/numDocuments);
+                        const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
 
-        dbo.collection('document_index').find(query).toArray((err, data) => {
-             if (err) throw err;
-            res.status(200).send(data);
-        });
-    }); 
+                        getDocumentsFromMongodb(load_doc_ids).then((documents) => {
+                            //TODO: Merge code duplicate
+                            res.status(200).send({documents: documents, pages: pages, keyphrases: keyphrases});
+                        });
+                    });
+                });
+            }); 
+        } else {
+            //Fetch document data from database
+            const doc_ids = x.doc_ids;
+            const keyphrases = x.keyphrases;
+            const pages = Math.ceil(doc_ids.length/numDocuments);
+            const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
+
+            getDocumentsFromMongodb(load_doc_ids).then((documents) => {
+                //TODO: Merge code duplicate
+                res.status(200).send({documents: documents, pages: pages, keyphrases: keyphrases});   
+            });
+        }        
+    });
+
+
+   
 });
 
 app.get('/', function (req, res) {

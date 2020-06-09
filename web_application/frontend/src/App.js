@@ -12,61 +12,46 @@ class App extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            searchQuery: '',
+            searchTerm: '',
             searchResults: [],
             pages: 0,
+            currentPage: 0,
             loadedDocuments: [],
             similarTopics: []
         };
     }
 
 
-    loadDocuments(page, n, that = this) {
-        if(page * n > that.state.searchResults.length) {
-            return;
-        }
+    loadDocuments = () => {
+        //TODO: reset pagination if new search term !!
+        const page = this.state.currentPage;
+        const searchTerm = this.state.searchTerm;
 
-        const items = that.state.searchResults.slice(page * n, Math.min((page + 1) * n, that.state.searchResults.length));
-        console.log(`update ${page}`);
-
-        fetch(`/document?doc_id=${encodeURIComponent(items)}`)
-            .then(res => res.json())
-            .then(json => that.setState({loadedDocuments: json}));
-    }
-
-    submit = (searchTerm) => {
-        const that = this;
-
-        fetch(`/search?term=${encodeURIComponent(searchTerm)}`)
+        fetch(`/search?term=${encodeURIComponent(searchTerm)}&page=${encodeURIComponent(page)}&numDocuments=${encodeURIComponent(10)}`)
             .then(res => res.json())
             .then(json => {
-                var doc_ids = json['doc_ids'];
-                var keyphrases = json['keyphrases'];
-                that.setState({pages: Math.ceil(doc_ids.length/10)}, () => console.log(that.state.pages))
-                that.setState({searchResults: doc_ids}, () =>   {that.loadDocuments(0, 10, that)});
-                that.setState({similarTopics: keyphrases});
-            });
+                this.setState({pages: json.pages})
+                this.setState({loadedDocuments: json.documents});
+                this.setState({similarTopics: json.keyphrases});
+            })
     }
 
-    pageChange(event, page) {
-        this.loadDocuments(page, 10, this)
-    }
+    pageChange(event, page) { this.setState({currentPage: page}, () => { this.loadDocuments(); }); }
+    searchQueryChange(searchTerm) { this.setState({searchTerm: searchTerm}, () => {this.loadDocuments(); }) }
 
     render() {
-        console.log(this.state);
-
         return (
             <div className="App">
               <Container fluid>
                 <Row>
-                    <Header submit={this.submit}/>
+                    <Header submit={this.searchQueryChange.bind(this)}/>
                 </Row>
                 <Row style={{padding: '60px'}}>
                     <Col md="6">
                         <Row style={{paddingBottom: '50px'}}>
                             <div>
                                 <div style={{maxWidth: '600px', contentAlign: 'left'}}>
-                                <SimilarTopics keywords={this.state.similarTopics} submit={this.submit}/>
+                                <SimilarTopics keywords={this.state.similarTopics}/>
                                 </div>
                             </div>
                         </Row>

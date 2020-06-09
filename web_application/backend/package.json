@@ -7,7 +7,8 @@
     "express": "^4.17.1",
     "mongodb": "^3.5.7",
     "natural": "^2.1.5",
-    "nodemon": "^2.0.3"
+    "nodemon": "^2.0.3",
+    "redis": "^3.0.2"
   },
   "devDependencies": {},
   "scripts": {
