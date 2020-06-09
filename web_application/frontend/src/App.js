@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
 import {Container,  Row, Col} from "react-bootstrap";
-import { makeStyles } from '@material-ui/core/styles';
+import { Pagination } from '@material-ui/lab';
+
 import SimilarTopics from './components/SimilarTopics';
 import Header from './components/Header';
 import Documents from './components/Documents';
 import WorldMap from './components/WorldMap';
-import { Pagination } from '@material-ui/lab';
 
 class App extends Component {
 
@@ -15,7 +15,7 @@ class App extends Component {
             searchTerm: '',
             searchResults: [],
             pages: 0,
-            currentPage: 0,
+            currentPage: 1,
             loadedDocuments: [],
             similarTopics: []
         };
@@ -24,7 +24,7 @@ class App extends Component {
 
     loadDocuments = () => {
         //TODO: reset pagination if new search term !!
-        const page = this.state.currentPage;
+        const page = this.state.currentPage - 1;
         const searchTerm = this.state.searchTerm;
 
         fetch(`/search?term=${encodeURIComponent(searchTerm)}&page=${encodeURIComponent(page)}&numDocuments=${encodeURIComponent(10)}`)
@@ -36,8 +36,20 @@ class App extends Component {
             })
     }
 
-    pageChange(event, page) { this.setState({currentPage: page}, () => { this.loadDocuments(); }); }
-    searchQueryChange(searchTerm) { this.setState({searchTerm: searchTerm}, () => {this.loadDocuments(); }) }
+    pageChange(event, page) { 
+        this.setState({currentPage: page}, () => { 
+            this.loadDocuments(); 
+        }); 
+    }
+
+    searchQueryChange(searchTerm) { 
+        if (this.state.searchTerm !== searchTerm) {
+            this.setState({currentPage: 1});
+        }
+        this.setState({searchTerm: searchTerm}, () => { 
+            this.loadDocuments(); 
+        }); 
+    }
 
     render() {
         return (
@@ -58,7 +70,10 @@ class App extends Component {
                         <Row>
                             <div>
                             <Documents documents={this.state.loadedDocuments}/>
-                            <Pagination style={{paddingTop: '20px'}} count={this.state.pages} shape="rounded" onChange={this.pageChange.bind(this)}/>
+                            <Pagination style={{paddingTop: '20px'}} 
+                                page={this.state.currentPage}
+                                count={this.state.pages} shape="rounded" 
+                                onChange={this.pageChange.bind(this)}/>
                             </div>
                         </Row>
                     </Col>
