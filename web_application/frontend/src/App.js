@@ -23,7 +23,6 @@ class App extends Component {
 
 
     loadDocuments = () => {
-        //TODO: reset pagination if new search term !!
         const page = this.state.currentPage - 1;
         const searchTerm = this.state.searchTerm;
 
@@ -61,20 +60,16 @@ class App extends Component {
                 <Row style={{padding: '60px'}}>
                     <Col md="6">
                         <Row style={{paddingBottom: '50px'}}>
-                            <div>
-                                <div style={{maxWidth: '600px', contentAlign: 'left'}}>
+                            <div style={{maxWidth: '600px', contentAlign: 'left'}}>
                                 <SimilarTopics keywords={this.state.similarTopics}/>
-                                </div>
                             </div>
                         </Row>
                         <Row>
-                            <div>
                             <Documents documents={this.state.loadedDocuments}/>
                             <Pagination style={{paddingTop: '20px'}} 
                                 page={this.state.currentPage}
                                 count={this.state.pages} shape="rounded" 
                                 onChange={this.pageChange.bind(this)}/>
-                            </div>
                         </Row>
                     </Col>
                     <Col md="6">
@@ -83,7 +78,7 @@ class App extends Component {
                 </Row>
               </Container>
             </div>
-            );
+        );
     }
 }
 
