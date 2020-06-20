@@ -1,8 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
+
+const natural = require('natural');
+
 const client = require('mongodb').MongoClient;
-const natural = require('natural')
+const neo4j = require('neo4j-driver');
 const RedisClient = require('redis').createClient;
 
 const app = express();
@@ -15,8 +18,13 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static(path.join(basePath, 'frontend', 'build')));
 
 const rank_weights = [0.55, 0.25, 0.2]
+
 const dbUri = 'mongodb://localhost:27017/';    //sudo systemctl start mongod
-const redis = RedisClient(27018, 'localhost'); //redis-server --maxmemory 10mb --maxmemory-policy allkeys-lru --port 27018
+const redis = RedisClient(27018, 'localhost'); //redis-server --maxmemory 10GB --maxmemory-policy allkeys-lru --port 27018
+const driver = neo4j.driver(
+    'bolt://localhost:7687',
+    neo4j.auth.basic('neo4j', 'password')
+)
 
 redis.on("error", (err) => {
     throw err;
@@ -178,7 +186,6 @@ getDataFromCache = async(query, client) => {
 
 getDocumentsFromMongodb = (doc_ids) => {
     var promise = new Promise((resolve, reject) => {
-        //TODO: Fetch Data from mongodb
         client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
             if (err) throw err;
             const dbo = db.db('covid_19');
@@ -216,36 +223,41 @@ app.get('/search', (req, res) => {
     const searchTerm = req.query.term;
     const page = parseInt(req.query.page);
     const numDocuments = parseInt(req.query.numDocuments);
+    const filter = req.query.filter;
     const query = getQeryFromTerm(searchTerm);
 
-    getDataFromCache(query, redis).then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
+    getDataFromCache(query, redis).
+    then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
         if(x.doc_ids == undefined || x.keyphrases == undefined) {
-            client.connect(dbUri, {useUnifiedTopology: true, useNewUrlParser: true}, (err, db) => {
+            client.connect(dbUri, { useUnifiedTopology: true, useNewUrlParser: true }, (err, db) => {
                 if (err) throw err;
                 
                 const dbo = db.db('covid_19');
                 
                 //Fetch document ids from database
-                getDocumentIdsFromMongodb(query, dbo).then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
+                getDocumentIdsFromMongodb(query, dbo).
+                then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
 
                     const doc_ids = x.doc_ids;
                     const keyphrasesQuery = x.keyphrase_query;
 
                     //Fetch keyphrases ids from database
-                    getKeyphrasesFromMongodb(keyphrasesQuery, dbo).then((keyphrases) => {
+                    getKeyphrasesFromMongodb(keyphrasesQuery, dbo).
+                    then((keyphrases) => {
 
-                        addDataToCache(query, doc_ids, keyphrases, redis).then((success) => {
+                        addDataToCache(query, doc_ids, keyphrases, redis).
+                        then((success) => {
                             if(success == true) {
                                 console.log('Added data to cache')
                             }
                         });
-                        
-                        
+                    
                         //Fetch document data from database
                         const pages = Math.ceil(doc_ids.length/numDocuments);
                         const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
 
-                        getDocumentsFromMongodb(load_doc_ids).then((documents) => {
+                        getDocumentsFromMongodb(load_doc_ids).
+                        then((documents) => {
                             //TODO: Merge code duplicate
                             res.status(200).send({documents: documents, pages: pages, keyphrases: keyphrases});
                         });
@@ -265,10 +277,67 @@ app.get('/search', (req, res) => {
             });
         }        
     });
-
-
-   
 });
+
+
+getCountries = (doc_ids) => {
+    const session = driver.session()
+    var promise = new Promise((resolve, reject) => {
+        session.run(
+            `MATCH (d:Document)
+             WHERE d.doc_id in $doc_ids
+             WITH d as valid_documents
+             MATCH (valid_documents)-[:WRITTEN_BY]->(a:Author)-[:WORKS_FOR]->(i:Institution)
+             WHERE i.name <> 'undefined'
+             WITH DISTINCT i as valid_institutions
+             MATCH (valid_institutions)-[:LOCATED_IN]->(c:Country)
+             WHERE c.code <> 'undefined'
+             WITH DISTINCT c as distinct_c
+             RETURN distinct_c`, {doc_ids: doc_ids})
+             .then((res) => {
+                items = res.records.map(record => {
+                    const raw = record.get('distinct_c').properties;
+                    const proc = { 'id': raw['code'], 'name': raw['name'], 'value': Math.random() * (100000 - 1000) + 100000, "color": '#FFFF00'} //, 
+                    return proc;
+                });   
+
+                resolve(items);
+             });
+    });
+
+    return promise;
+}
+
+getDocumentsByAuthors = (author) => {
+
+}
+
+app.get('/metadata', (req, res) => {
+    const searchTerm = req.query.term;
+    const query = getQeryFromTerm(searchTerm);
+    var doc_ids = undefined;
+
+    getDataFromCache(query, redis).
+    then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
+        if(x.doc_ids == undefined || x.keyphrases == undefined) {
+            getDocumentIdsFromMongodb(query, dbo).
+            then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
+                doc_ids = x.doc_ids;
+                getCountries(doc_ids).
+                then(countries => {
+                    res.status(200).send({countries: countries}); 
+                });
+            });
+        } 
+        else{
+            doc_ids = x.doc_ids;
+            getCountries(doc_ids).
+            then(countries => {
+                res.status(200).send({countries: countries}); 
+            });
+        }
+    });    
+})
 
 app.get('/', function (req, res) {
     res.sendFile(path.join(basePath, 'frontend', 'build', 'index.html'));

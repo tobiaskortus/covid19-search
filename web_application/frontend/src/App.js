@@ -17,12 +17,13 @@ class App extends Component {
             pages: 0,
             currentPage: 1,
             loadedDocuments: [],
-            similarTopics: []
+            similarTopics: [],
+            countryMetadata: []
         };
     }
 
 
-    loadDocuments = () => {
+    loadDocuments = (newQuery) => {
         const page = this.state.currentPage - 1;
         const searchTerm = this.state.searchTerm;
 
@@ -32,7 +33,21 @@ class App extends Component {
                 this.setState({pages: json.pages})
                 this.setState({loadedDocuments: json.documents});
                 this.setState({similarTopics: json.keyphrases});
-            })
+                
+                if(newQuery) {
+                    this.loadCountries();
+                }
+            });
+    }
+
+    loadCountries = () => {
+        const searchTerm = this.state.searchTerm;
+    
+        fetch(`/metadata?term=${encodeURIComponent(searchTerm)}`)
+            .then(res => res.json())
+            .then(json => {
+                this.setState({countryMetadata: json.countries})
+            });
     }
 
     pageChange(event, page) { 
@@ -42,11 +57,15 @@ class App extends Component {
     }
 
     searchQueryChange(searchTerm) { 
+        var newQuery = false;
+
         if (this.state.searchTerm !== searchTerm) {
             this.setState({currentPage: 1});
+            newQuery = true;
         }
+        
         this.setState({searchTerm: searchTerm}, () => { 
-            this.loadDocuments(); 
+            this.loadDocuments(newQuery); 
         }); 
     }
 
@@ -73,7 +92,7 @@ class App extends Component {
                         </Row>
                     </Col>
                     <Col md="6">
-                        <WorldMap/>
+                        <WorldMap data={this.state.countryMetadata}/>
                     </Col>
                 </Row>
               </Container>

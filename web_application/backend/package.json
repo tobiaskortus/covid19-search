@@ -7,6 +7,7 @@
     "express": "^4.17.1",
     "mongodb": "^3.5.7",
     "natural": "^2.1.5",
+    "neo4j-driver": "^4.0.2",
     "nodemon": "^2.0.3",
     "redis": "^3.0.2"
   },
