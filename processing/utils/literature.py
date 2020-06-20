@@ -28,6 +28,7 @@ class DataLoader:
     def get_title(self):
         return self.json['metadata']['title']
 
+    #TODO: Improve is name check
     def __is_name(self, first_name, middle_name, last_name):
         return not len(last_name) < 2 or first_name.isalpha() or first_name is ' '
 
@@ -37,29 +38,34 @@ class DataLoader:
         """
         return''.join(ch for ch in x if ch.isalpha() or ch is '-')
 
-    def __parse_author(self, raw_author, clean_names=False, plausibility_check=False):
+    def __join_name(self, name, normalize_names=False):
+        first_name, middle_names, last_name = name
+        
+        #Normalize name to following form #.#.#### (eg. Stephen William Hawking -> S. W. Hawking)
+        if normalize_names:
+            first_name = f'{first_name[0].upper()}. '
+            middle_names = [f'{middle_name[0].upper()}. ' for middle_name in middle_names if len(middle_name) != 0]
+
+        return f"{first_name}{''.join(middle_names)}{last_name}"
+
+    def __parse_author(self, raw_author, clean_names=False, normalize_names=False, plausibility_check=False):
         if clean_names:
-            middle_names_cleaned = ''.join(self.__clean_name_part(raw_author['middle']))
+            middle_names = [self.__clean_name_part(name) for name in raw_author['middle']]
             first_name = f"{self.__clean_name_part(raw_author['first'])} "
-            middle_name = f"{middle_names_cleaned}{' ' if len(middle_names_cleaned) != 0 else ''}"
             last_name = self.__clean_name_part(raw_author['last'])
         else:
             first_name = f"{raw_author['first']} "
-            middle_name = f"{''.join(raw_author['middle'])}{' ' if len(raw_author['middle']) != 0 else ''}"
+            middle_names = [name for name in raw_author['middle']]
             last_name = raw_author['last']
 
         is_name = True
         if plausibility_check:
-            is_name = self.__is_name(first_name, middle_name, last_name)
+            is_name = self.__is_name(first_name, middle_names, last_name)
 
-
-        author = f"{first_name}{middle_name}{last_name}" if is_name else None
+        author = self.__join_name((first_name, middle_names, last_name), normalize_names=normalize_names) if is_name else None
         return (author, is_name)
 
     def __parse_institution(self, institution_raw, plausibility_check=False):
-        """
-        TODO: add additional information from grid (e.g. Location of institution)
-        """
         institution = {
                 'Name': institution_raw, 
                 'Country': 'undefined', 
@@ -77,7 +83,7 @@ class DataLoader:
         return institution, is_institution
 
 
-    def get_authors(self, plausibility_check=True, clean_names=True):
+    def get_authors(self, plausibility_check=True, clean_names=True, normalize_names=True):
         authors = []
 
         for author in self.json['metadata']['authors']:
@@ -88,6 +94,7 @@ class DataLoader:
             author, _ = self.__parse_author(
                 raw_author=author,
                 clean_names=clean_names, 
+                normalize_names=normalize_names,
                 plausibility_check=plausibility_check)
             
             authors.append((author, institution))
@@ -127,8 +134,8 @@ class DataLoader:
         while ref_entry is not None:
             index+=1
             title = ref_entry['title']
-            authors = [self.__parse_author(a, False, True) for a in ref_entry['authors']]
-            ref_entries.append((title, authors, ref_entry))
+            authors = [self.__parse_author(a, True, True, True) for a in ref_entry['authors']]
+            ref_entries.append((title, authors))
             ref_entry = self.json['bib_entries'].get(f'BIBREF{index}')
 
         return ref_entries
@@ -174,9 +181,9 @@ def get_authors(fpath, dl=None):
     if dl is None: dl = DataLoader(fpath)
     return dl.get_authors()
 
-def get_ref_entires(fpath, dl=None):
+def get_bib_entries(fpath, dl=None):
     if dl is None: dl = DataLoader(fpath)
-    return dl.get_ref_entires()
+    return dl.get_bib_entries()
 
 def is_english(text):
     is_reliable, _, details = cld2.detect(text)
