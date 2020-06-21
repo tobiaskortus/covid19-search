@@ -21,7 +21,7 @@ class WorldMap extends Component {
   }
 
   initializeChart() {
-    var chart = am4core.create("chartdiv", am4maps.MapChart);
+    var chart = am4core.create("mapdiv", am4maps.MapChart);
 
     var data = this.props.data.map(entry => {
       return {'id': entry['id'], 'name': entry['name'], 'value': entry['value'], 'color': chart.colors.getIndex(0)}
@@ -56,7 +56,7 @@ class WorldMap extends Component {
       "min": 4,
       "max": 15,
       "dataField": "value"
-    })
+    });
 
     imageTemplate.adapter.add("latitude", function(latitude, target) {
       var polygon = polygonSeries.getPolygonById(target.dataItem.dataContext.id);
@@ -85,7 +85,7 @@ class WorldMap extends Component {
 
   render() {
     return (
-      <div id="chartdiv" style={{ width: "100%", height: "300px" }}></div>
+      <div id="mapdiv" style={{ width: "100%", height: "300px" }}></div>
     );
   }
 }

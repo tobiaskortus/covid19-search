@@ -6,6 +6,8 @@ import SimilarTopics from './components/SimilarTopics';
 import Header from './components/Header';
 import Documents from './components/Documents';
 import WorldMap from './components/WorldMap';
+import Metadata from './components/Metadata';
+import AdditionalInfo from './components/AdditionalInfo';
 
 class App extends Component {
 
@@ -33,6 +35,8 @@ class App extends Component {
                 this.setState({pages: json.pages})
                 this.setState({loadedDocuments: json.documents});
                 this.setState({similarTopics: json.keyphrases});
+
+                console.log(json);
                 
                 if(newQuery) {
                     this.loadCountries();
@@ -69,22 +73,46 @@ class App extends Component {
         }); 
     }
 
+    selectDocument(doc_id) {
+        console.log(doc_id);
+    }
+
+    selectTopic(topic) {
+        var newQuery = false;
+
+        if (this.state.searchTerm !== topic) {
+            this.setState({currentPage: 1});
+            newQuery = true;
+        }
+
+        this.setState({searchTerm: topic}, () => { 
+            this.loadDocuments(newQuery); 
+        }); 
+    }
+
     render() {
         return (
             <div className="App">
               <Container fluid>
                 <Row>
-                    <Header submit={this.searchQueryChange.bind(this)}/>
+                    <Header 
+                        searchTerm={this.state.searchTerm}
+                        submit={this.searchQueryChange.bind(this)}/>
                 </Row>
                 <Row style={{padding: '60px'}}>
                     <Col md="6">
                         <Row style={{paddingBottom: '50px'}}>
                             <div style={{maxWidth: '600px', contentAlign: 'left'}}>
-                                <SimilarTopics keywords={this.state.similarTopics}/>
+                                <SimilarTopics
+                                    keywords={this.state.similarTopics}
+                                    onTopicSelected={this.selectTopic.bind(this)}/>
                             </div>
                         </Row>
                         <Row>
-                            <Documents documents={this.state.loadedDocuments}/>
+                            <Documents 
+                                documents={this.state.loadedDocuments}
+                                onSelectDocument={this.selectDocument}/>
+                                
                             <Pagination style={{paddingTop: '20px'}} 
                                 page={this.state.currentPage}
                                 count={this.state.pages} shape="rounded" 
@@ -92,7 +120,17 @@ class App extends Component {
                         </Row>
                     </Col>
                     <Col md="6">
-                        <WorldMap data={this.state.countryMetadata}/>
+                        <Row style={{paddingBottom: '30px'}}>
+                            <WorldMap data={this.state.countryMetadata}/>
+                        </Row>
+                        <Row>
+                            <Col md="4">
+                                <Metadata/>
+                            </Col>
+                            <Col md="7">
+                                <AdditionalInfo/>
+                            </Col>
+                        </Row>
                     </Col>
                 </Row>
               </Container>

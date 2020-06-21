@@ -1,16 +1,14 @@
 import './Header.css'
-import search from '../assets/icons/search-white-18dp.svg'
-import clear from '../assets/icons/clear-white-18dp.svg'
 
 import Particles from 'react-particles-js';
-import React, { Component } from 'react'
-import { Image } from 'react-bootstrap'
-import { Tooltip } from '@material-ui/core'
+import React, { Component } from 'react';
+import { Tooltip } from '@material-ui/core';
+import SearchIcon from '@material-ui/icons/Search';
+import ClearIcon from '@material-ui/icons/Clear';
 
 
 const ENTER = 13;
 
-//TODO: Make header reactive 
 export class Header extends Component {
 
     constructor() {
@@ -27,9 +25,18 @@ export class Header extends Component {
                 }
             }
         };
+
+        this.lastParentUpdate = ''
     }
 
     handleChange = (e) => this.setState({searchTerm: e.target.value})
+
+    componentDidUpdate(previous) {
+        if(this.lastParentUpdate != this.props.searchTerm) {
+          this.setState({searchTerm: this.props.searchTerm});
+          this.lastParentUpdate = this.props.searchTerm;
+        }
+      }
 
     handleKeyDown = (e) => {
         if (e.keyCode === ENTER) {
@@ -62,12 +69,13 @@ export class Header extends Component {
                             {
                                 this.state.searchTerm !== '' &&
                                 <Tooltip title='clear search input'>
-                                <Image onClick={() => this.setState({searchTerm: ''})} src={clear} className='search-icon'/>
+                                    <ClearIcon onClick={() => this.setState({searchTerm: ''})}/>
                                 </Tooltip>
                             }
                     
+                    
                             <Tooltip title='search'>
-                                <Image onClick={() => this.props.submit(this.state.searchTerm)} src={search} className='search-icon'/>
+                                <SearchIcon onClick={() => this.props.submit(this.state.searchTerm)}/>
                             </Tooltip>
                         </div>
                     </div>

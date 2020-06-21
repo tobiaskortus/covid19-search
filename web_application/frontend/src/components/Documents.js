@@ -1,15 +1,16 @@
 import React, { Component } from 'react'
+import { Link } from '@material-ui/core'
 
 export class Documents extends Component {
     render() {
         return this.props.documents.map((document) => (
             <div>
-                <a href="#" style={{fontSize: "15px", color: 'black'}}>{document.document_title}</a> 
+                <Link href="#" style={{fontSize: "15px", color: 'black'}} onClick={() => {console.log('click')}}>{document.document_title}</Link> 
                 <br/>
                 {
                     document.authors.slice(0, Math.min(4, document.authors.length)).map(author => {
                         return(
-                            <a href="#" style={{fontSize: "12px", color: 'green'}}> {author} ·</a>
+                            <Link href="#" style={{fontSize: "12px", color: 'green'}}>{author} - </Link>
                         )
                     })
                 }
