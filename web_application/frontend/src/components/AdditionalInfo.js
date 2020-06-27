@@ -1,28 +1,22 @@
 import React, { Component } from 'react'
-import { ListGroup, Row } from 'react-bootstrap'
-import BarChart from './BarChart'
+import { ListGroup } from 'react-bootstrap'
 
 export class AdditionalInfo extends Component {
     render() {
         return (
-            <div>
-                <Row>
-                    <BarChart/>
-                </Row>
-                <Row>
-                    <ListGroup style={{width: "100%"}}>
-                        <ListGroup.Item>
-                            <p>A</p>
-                            <p>A</p>
-                            <p>A</p>
-                            <p>A</p>
-                            <p>A</p>
-                            <p>A</p>
-                            <p>A</p>
-                            <p>A</p>
-                        </ListGroup.Item>
-                    </ListGroup>
-                </Row>
+            <div style={{width: "100%"}}>
+                <ListGroup style={{width: "100%"}}>
+                    <ListGroup.Item>
+                        <p>A</p>
+                        <p>A</p>
+                        <p>A</p>
+                        <p>A</p>
+                        <p>A</p>
+                        <p>A</p>
+                        <p>A</p>
+                        <p>A</p>
+                    </ListGroup.Item>
+                </ListGroup>
             </div>
         )
     }

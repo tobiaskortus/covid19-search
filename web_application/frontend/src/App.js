@@ -8,6 +8,7 @@ import Documents from './components/Documents';
 import WorldMap from './components/WorldMap';
 import Metadata from './components/Metadata';
 import AdditionalInfo from './components/AdditionalInfo';
+import BarChart from './components/BarChart';
 
 class App extends Component {
 
@@ -20,7 +21,9 @@ class App extends Component {
             currentPage: 1,
             loadedDocuments: [],
             similarTopics: [],
-            countryMetadata: []
+            countryMetadata: [],
+            selectedDocument: undefined,
+            metadata: []
         };
     }
 
@@ -36,8 +39,6 @@ class App extends Component {
                 this.setState({loadedDocuments: json.documents});
                 this.setState({similarTopics: json.keyphrases});
 
-                console.log(json);
-                
                 if(newQuery) {
                     this.loadCountries();
                 }
@@ -74,7 +75,44 @@ class App extends Component {
     }
 
     selectDocument(doc_id) {
-        console.log(doc_id);
+        //Only update selected document if no document was previously loaded
+        //or the new selected document is not the same as the current 
+        if(this.selectedDocument !== undefined && 
+           this.selectedDocument.doc_id === doc_id) {
+            return;
+        }
+
+        fetch(`/document?doc_id=${encodeURIComponent(doc_id)}`)
+        .then(res => res.json())
+        .then(json => {
+            this.setState({selectedDocument: json}, () => {
+                this.fetchStatistics(this.state.selectedDocument.authors, 'authors');
+            });
+        });
+    }
+
+    fetchStatistics(authors_obj, type) {
+        var params;
+    
+        switch (type) {
+            case 'authors':
+                params = authors_obj.map(tuple => {return tuple.author;})
+                break;
+            case 'institutions':
+                params = authors_obj.map(tuple => {return tuple.institution;})
+                break;
+        }
+
+        var unique_params = params.filter(function(item, pos, self) {
+            return self.indexOf(item) === pos;
+        })
+
+        fetch(`/statistics?type=${encodeURIComponent(type)}&params=${encodeURIComponent(unique_params)}`)
+        .then(res => res.json())
+        .then(json => {
+            console.log(json);
+            this.setState({metadata: json});
+        })
     }
 
     selectTopic(topic) {
@@ -109,14 +147,19 @@ class App extends Component {
                             </div>
                         </Row>
                         <Row>
-                            <Documents 
-                                documents={this.state.loadedDocuments}
-                                onSelectDocument={this.selectDocument}/>
-                                
-                            <Pagination style={{paddingTop: '20px'}} 
-                                page={this.state.currentPage}
-                                count={this.state.pages} shape="rounded" 
-                                onChange={this.pageChange.bind(this)}/>
+                            {
+                                this.state.loadedDocuments.length !== 0 &&
+                                <div>
+                                    <Documents 
+                                        documents={this.state.loadedDocuments}
+                                        onSelectDocument={this.selectDocument.bind(this)}/>
+                                    
+                                    <Pagination style={{paddingTop: '20px'}} 
+                                        page={this.state.currentPage}
+                                        count={this.state.pages} shape="rounded" 
+                                        onChange={this.pageChange.bind(this)}/>
+                                </div>
+                            }
                         </Row>
                     </Col>
                     <Col md="6">
@@ -124,12 +167,31 @@ class App extends Component {
                             <WorldMap data={this.state.countryMetadata}/>
                         </Row>
                         <Row>
-                            <Col md="4">
-                                <Metadata/>
-                            </Col>
-                            <Col md="7">
-                                <AdditionalInfo/>
-                            </Col>
+                            { 
+                                this.state.selectedDocument !== undefined ?
+                                <div style={{widht: '100%', display: 'flex'}}>
+                                    <Col md="4">
+                                        <Metadata 
+                                            document={this.state.selectedDocument}
+                                            onLinkClicked={() => {console.log('load document')}}
+                                            onStatisticsClicked={this.fetchStatistics.bind(this)}/>
+                                    </Col>
+                                    <Col md="7">
+                                        <Row>
+                                            <BarChart data={this.state.metadata}/>
+                                        </Row>
+                                        <Row>
+                                            <AdditionalInfo/>
+                                        </Row>
+                                    </Col>
+                                </div> 
+                                :
+                                <div style={{margin: '0 auto'}}>
+                                   <h5 style={{color: '#aaa', paddingTop: '200px'}}>
+                                       Select a document to show additional information !
+                                    </h5>
+                                </div> 
+                            }
                         </Row>
                     </Col>
                 </Row>

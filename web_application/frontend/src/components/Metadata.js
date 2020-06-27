@@ -10,22 +10,32 @@ export class Metadata extends Component {
             <div>
                 <ListGroup>
                     <ListGroup.Item>
-                        <h7>Modeling the Heterogeneity in COVID-19's Reproductive Number and Its Impact on Predictive Scenarios</h7> <PictureAsPdfIcon/> <PersonIcon/> <ApartmentIcon/>
+                        <h7>{this.props.document.title}</h7> 
+
+                        <PictureAsPdfIcon onClick={this.props.onLinkClicked}/> 
+                        <PersonIcon onClick={() => {
+                            console.log('authors')
+                            this.props.onStatisticsClicked(this.props.document.authors, 'authors')
+                            }}/> 
+                        <ApartmentIcon onClick={() => {
+                            console.log('institutions')
+                            this.props.onStatisticsClicked(this.props.document.authors, 'institutions')
+                        }}/>
+
                     </ListGroup.Item> 
                     <ListGroup.Item>
                         <h6 style={{paddingBottom: "8px"}}>Authors </h6>
-                        <p style={{lineHeight: "0.6", fontSize: "12px"}}>C. Donnat - ABC</p>
-                        <p style={{lineHeight: "0.6", fontSize: "12px"}}>A. S. Holmes - ABC</p>
-                        <p style={{lineHeight: "0.6", fontSize: "12px"}}>B. S. Holmes - ABC</p>
-                        <p style={{lineHeight: "0.6", fontSize: "12px"}}>F. S. Holmes - ABC</p>
+                        {
+                            this.props.document.authors.map((tuple) => {
+                                return(
+                                    <p style={{lineHeight: "0.6", fontSize: "12px"}}>{tuple.author} - {tuple.institution}</p>
+                                );
+                            })
+                        }
                     </ListGroup.Item>
                     <ListGroup.Item>
                         <h6>Abstract</h6>
-                        <p style={{fontSize: "12px"}}>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna 
-                            aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea
-                            takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
-                            tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et 
-                            accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p>
+                        <p style={{fontSize: "12px"}}>{this.props.document.abstract}</p>
                     </ListGroup.Item>
                 </ListGroup>
             </div>

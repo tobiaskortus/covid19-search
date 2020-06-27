@@ -32,7 +32,7 @@ export class Header extends Component {
     handleChange = (e) => this.setState({searchTerm: e.target.value})
 
     componentDidUpdate(previous) {
-        if(this.lastParentUpdate != this.props.searchTerm) {
+        if(this.lastParentUpdate !== this.props.searchTerm) {
           this.setState({searchTerm: this.props.searchTerm});
           this.lastParentUpdate = this.props.searchTerm;
         }
@@ -72,7 +72,6 @@ export class Header extends Component {
                                     <ClearIcon onClick={() => this.setState({searchTerm: ''})}/>
                                 </Tooltip>
                             }
-                    
                     
                             <Tooltip title='search'>
                                 <SearchIcon onClick={() => this.props.submit(this.state.searchTerm)}/>

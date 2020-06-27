@@ -219,6 +219,161 @@ createQuery = (stemmedTokens) => {
     return {_id: {$in: [...stemmedTokens]}};
 }
 
+
+getDocumentsByAuthor = (author) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        session.run(
+            `MATCH (a:Author)-[:WROTE]->(d:Document)
+             WHERE a.name = $author and d.doc_id <> -1
+             return d.doc_id`, {author: author})
+             .then((res => {
+                documents = res.records.map(record => {
+                    return record.get('d').properties;
+                });   
+
+                resolve(documents);
+                session.close();
+             }));
+    });
+    
+    return promise;
+}
+
+getDocumentsByInstitution = (institution) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        session.run(
+            `MATCH (i:Institution)-[:EMPLOYED]->(a:Author)-[:WROTE]->(d:Document)
+             WHERE i.name = $institution and d.doc_id <> -1
+             return d.doc_id`, {institution: institution})
+            .then(res => {
+            documents = res.records.map(record => {
+                return record.get('d').properties;
+            });   
+
+            resolve(documents);
+            session.close();
+        }); 
+    });
+
+    return promise;
+}
+
+getDocumentMetadata = (doc_id) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        session.run(
+            `MATCH (d:Document)
+             WHERE d.doc_id = $doc_id
+             MATCH (d)-[:WRITTEN_BY]->(a:Author)
+             WHERE a.name <> 'undefined'
+             WITH DISTINCT a as da, d as d
+             MATCH (da)-[:WORKS_FOR]->(i:Institution)
+             WITH i as i, da as da, d as d
+             return da.name as author, i.name as institution`, {doc_id: doc_id})
+            .then(res => {
+            author_institution_tuples = res.records.map(record => {
+                return {
+                    'author': record.get('author'),
+                    'institution': record.get('institution')
+                };
+            });   
+
+            resolve(author_institution_tuples);
+            session.close();
+        }) 
+    });
+
+    return promise;
+}
+
+
+getCountries = (doc_ids) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        session.run(
+            `MATCH (d:Document)
+             WHERE d.doc_id in $doc_ids
+             WITH d as vd
+             MATCH (vd)-[:WRITTEN_BY]->(a:Author)-[:WORKS_FOR]->(i:Institution)
+             WHERE i.name <> 'undefined'
+             WITH DISTINCT i as vi
+             MATCH (vi)-[:LOCATED_IN]->(c:Country)
+             WHERE c.code <> 'undefined'
+             return c.name as name, c.code as code, count(c.name) as count`, {doc_ids: doc_ids})
+             .then((res) => {
+                countries = res.records.map(record => {
+                    return { 
+                        'id': record.get('code'), 
+                        'name': record.get('name'), 
+                        'value': record.get('count').low, 
+                        'color': '#FFFF00'} //, 
+                });   
+
+                resolve(countries);
+                session.close();
+             });
+    });
+
+    return promise;
+}
+
+getAuthorStatistics = (authors) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        session.run(
+            `MATCH (a:Author)
+             WHERE a.name in $authors
+             WITH a as va
+             MATCH (va)-[:WROTE]->(d:Document)
+             WHERE d.doc_id <> -1
+             RETURN va.name as name, collect(d.doc_id) as doc_ids, count(d) as count`, {authors: authors})
+            .then((res) => {
+                statistic = res.records.map(record => {
+                    return {
+                        'name': record.get('name'),
+                        'doc_ids': record.get('doc_ids'),
+                        'count': record.get('count').low
+                    }
+                });
+
+                resolve(statistic);
+                session.close();
+            });
+    });
+
+    return promise;
+}
+
+
+getInstitutionStatistics = (institutions) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        session.run(
+            `MATCH (i:Institution)
+                WHERE i.name in $institutions and i.name <> 'undefined'
+                WITH i as vi
+                MATCH (vi)-[:EMPLOYED]->(a:Author)-[:WROTE]->(d:Document)
+                WHERE d.doc_id <> -1
+                RETURn vi.name as name, collect(d.doc_id) as doc_ids, count(d) as count`, {institutions: institutions})
+            .then((res) => {
+                statistic = res.records.map(record => {
+                    return {
+                        'name': record.get('name'),
+                        'doc_ids': record.get('doc_ids'),
+                        'count': record.get('count').low
+                    }
+                });
+
+                resolve(statistic);
+                session.close();
+            });
+    });
+
+    return promise;
+}
+
 app.get('/search', (req, res) => {
     const searchTerm = req.query.term;
     const page = parseInt(req.query.page);
@@ -279,38 +434,22 @@ app.get('/search', (req, res) => {
     });
 });
 
-
-getCountries = (doc_ids) => {
-    const session = driver.session()
-    var promise = new Promise((resolve, reject) => {
-        session.run(
-            `MATCH (d:Document)
-             WHERE d.doc_id in $doc_ids
-             WITH d as valid_documents
-             MATCH (valid_documents)-[:WRITTEN_BY]->(a:Author)-[:WORKS_FOR]->(i:Institution)
-             WHERE i.name <> 'undefined'
-             WITH DISTINCT i as valid_institutions
-             MATCH (valid_institutions)-[:LOCATED_IN]->(c:Country)
-             WHERE c.code <> 'undefined'
-             WITH DISTINCT c as distinct_c
-             RETURN distinct_c`, {doc_ids: doc_ids})
-             .then((res) => {
-                items = res.records.map(record => {
-                    const raw = record.get('distinct_c').properties;
-                    const proc = { 'id': raw['code'], 'name': raw['name'], 'value': Math.random() * (100000 - 1000) + 100000, "color": '#FFFF00'} //, 
-                    return proc;
-                });   
-
-                resolve(items);
-             });
+app.get('/document', (req, res) => {
+    const doc_id = parseInt(req.query.doc_id);
+    getDocumentsFromMongodb([doc_id])
+    .then(document => {
+        getDocumentMetadata(doc_id)
+        .then(metadata => {
+            const merged = {
+                'doc_id': document[0]._id,
+                'title': document[0].document_title,
+                'abstract': document[0].abstract,
+                'authors': metadata
+            };
+            res.status(200).send(merged);
+        });
     });
-
-    return promise;
-}
-
-getDocumentsByAuthors = (author) => {
-
-}
+});
 
 app.get('/metadata', (req, res) => {
     const searchTerm = req.query.term;
@@ -338,6 +477,27 @@ app.get('/metadata', (req, res) => {
         }
     });    
 })
+
+app.get(`/statistics`, (req, res) => {
+    const params = req.query.params.split(',');
+    const type = req.query.type
+
+
+    switch(type) {
+        case 'authors':
+            getAuthorStatistics(params).
+            then(statistics => {
+                res.status(200).send({metadata: statistics});
+            });
+            break;
+        case 'institutions':
+            getInstitutionStatistics(params).
+            then(statistics => {
+                res.status(200).send({metadata: statistics});
+            })
+            break;
+    }
+});
 
 app.get('/', function (req, res) {
     res.sendFile(path.join(basePath, 'frontend', 'build', 'index.html'));
