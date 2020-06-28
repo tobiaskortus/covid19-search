@@ -46,7 +46,7 @@ Redis Caching
 
 With regards to the memory and runtime requirements it is recommended to perform these operations on the database level instead of the application level. Nevertheless in this project the mentioned operations were moved to the application layer in order to make adjustments regarding the document ranking and implementation of different IR algorithms as dynamic as possible. Due to the small size of the data set, no significant restrictions in speed and memory consumtion are expected.
 
-The intersection of the search results are computated based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm using <img src="https://render.githubusercontent.com/render/math?math=n"> lists of ranked documents loaded from the database based on the search stems as described before. This operation is performed in the function `intersect` in `server.js` . The actual implementation of the 2-way-merge algorihm is located in the `mergeIntersect` method which is also located in `server.js` 
+The intersection of the search results are computated based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm using <img src="https://render.githubusercontent.com/render/math?math=n"> lists of ranked documents loaded from the database based on the search stems as described before <cite>[1]</cite>. This operation is performed in the function `intersect` in `server.js` . The actual implementation of the 2-way-merge algorihm is located in the `mergeIntersect` method which is also located in `server.js` 
 
 
 ```javascript
@@ -66,3 +66,7 @@ intersect = (data) => {...}
  */
 mergeIntersect = (L1, L2) => {...}
 ```
+
+## References
+
+[1] Sunghwan Kim, Taesung Lee, Seung Won Hwang, andSameh Elnikety. List intersection for web search: Algo-rithms, cost models, and optimizations.Proceedings ofthe VLDB Endowment, 12(1):1–13, 2018.
