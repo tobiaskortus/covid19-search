@@ -71,7 +71,7 @@ The preprocessing of the search query given by the arguments of the /search page
  * @param the given search term present in keywords or a free text 
  * @returns a mongodb query 
  */
-getQeryFromTerm(searchTerm) => {...}
+getQeryFromTerm = (searchTerm) => {...}
 ```
 
 In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following two steps are performed:
@@ -82,9 +82,45 @@ In order to transform a given query, which can be either present in keywords or 
 
 ### Data retrieval from database
 
-The previously constructed query is used in the following step in order to return a list of document ids, with the additional information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. These results are then consecutively ranked and the lists are intersected in order to return the matching documents that match all elements of the query. In a final step the documents based on on the page and number of documents per pages as defined in the request arguments are loaded from the database and returned as the http response.
+The previously constructed query is used in the following step using the function  `getDocumentIdsFromMongodb` in order to return a list of document ids, with the additional information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. 
 
-In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in memory cache is implemented using a redis database. Hereby the processed result of search queries are stored in the redis cache in order to seed up future requests. Per default 2GB are assigned to the redis database which is in the most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. Anyway the maxmemory configuration of the database is set to a least recent out strategy. 
+
+```javascript
+/**
+ * @param search query as given by getQeryFromTerm
+ * @param the connection object to the mongodb database
+ * @returns all matched document ids
+ */
+getDocumentIdsFromMongodb = (query, dbo) => {...}
+```
+
+These results are then consecutively ranked and the lists are intersected in order to return the matching documents that match all elements of the query. In a final step the documents based on on the page and number of documents per pages as defined in the request arguments are loaded from the database using the `getDocumentsFromMongodb` function and returned as the http response.
+
+```javascript
+/**
+ * @param 
+ * @returns
+ */
+getDocumentsFromMongodb = (doc_ids) => {...}
+```
+
+In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in memory cache is implemented using a redis database. Hereby the processed result of search queries are stored in the redis cache using the `getDataFromCache` function in order to seed up future requests which can be fetched using `getDataFromCache`. 
+
+
+```javascript
+/**
+ * @param
+ * @param
+ * @returns
+ */
+getDataFromCache = (query, client) => {...}
+```
+
+```javascript
+addDataToCache = (query, doc_ids, keyphrases, client) => {...}
+```
+
+ Per default 2GB are assigned to the redis database which is in the most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. Anyway the maxmemory configuration of the database is set to a least recent out strategy. 
 
 </br>
 
@@ -102,8 +138,6 @@ In order to improve the performance of these operations, expecially when loading
 <p align="center">
   <img width=25% src="../../doc/intersect.png">
 </p>
-
-
 
 **Fig 2:** Symbolic representation of three sets of document results based on a search query <img src="https://render.githubusercontent.com/render/math?math=M_{A}">, <img src="https://render.githubusercontent.com/render/math?math=M_{B}"> and <img src="https://render.githubusercontent.com/render/math?math=M_{C}"> determined on the basis of the components <img src="https://render.githubusercontent.com/render/math?math=A">, <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=C"> of  a search query <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=A B C">, as well as their final search result consisting of the intersection <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=M_{A,B,C} = M_{A} \cap M_{B} \cap M_{C}">
 
