@@ -2,9 +2,11 @@
 
 ## API-endpoints
 
-## Ad-hoc search
+<p align="center">
+  <img width=40% src="../../doc/web_server_backedn_api_endpoints.png">
+</p>
 
-Api Endpoints
+### Ad-hoc search
 
 ```javascript
 app.get('/search', (req, res) => {...}
@@ -14,28 +16,91 @@ This requests expects, as dispicted below, a search term as string, the selected
 
 ```json
 {
-    'term': ...,
-    'page': ...,
-    'numDocuments': ...
+  term: ...,
+  page: ...,
+  numDocuments: ...
 }
 ```
 
+
+### Metadata analysis
+
+```javascript
+app.get('/document', (req, res) => {...}
+```
+
+```json
+{
+    doc_id: ...
+}
+```
+
+```javascript
+app.get('/metadata', (req, res) => {...}
+```
+
+```json
+{
+  term: ...
+}
+```
+
+```javascript
+app.get(`/statistics`, (req, res) => {...}
+```
+
+```json
+{
+  type: ...
+  params: [
+    ...,
+    ...
+  ]
+}
+```
+
+
+## Information retrieval - Ad-hoc
+
 ### Preprocessing of the given search query
+
+The preprocessing of the search query given by the arguments of the /search page takes place in the`getQeryFromTerm` function.
+
+```javascript
+/**
+ * @param the given search term present in keywords or a free text 
+ * @returns a mongodb query 
+ */
+getQeryFromTerm(searchTerm) => {...}
+```
+
+In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following two steps are performed:
+
+- **splitting:** The given search query is split into a list of individual strings by whitespaces. 
+- **stemming:** the word stem is formed for each of the words from the split set using the [natural](https://github.com/NaturalNode/natural) package.
+- **conversion in query:** in a final step the list of search terms are transformed to a valid query which can be processed by mongodb
 
 ### Data retrieval from database
 
-Redis Caching
+The previously constructed query is used in the following step in order to return a list of document ids, with the additional information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. These results are then consecutively ranked and the lists are intersected in order to return the matching documents that match all elements of the query. In a final step the documents based on on the page and number of documents per pages as defined in the request arguments are loaded from the database and returned as the http response.
+
+In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in memory cache is implemented using a redis database. Hereby the processed result of search queries are stored in the redis cache in order to seed up future requests. Per default 2GB are assigned to the redis database which is in the most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. Anyway the maxmemory configuration of the database is set to a least recent out strategy. 
+
+</br>
 
 <p align="center">
-  <img width=80% src="../../doc/redis_caching_backend.png">
+  <img width=60% src="../../doc/redis_caching_backend.png">
 </p>
 
-**Fig 2:** f
+**Fig 2:** Processing pipeline for ad-hoc search using the MongoDB data model, the processing logic and an intermediate redis cache in order to improve responsiveness and speed expecially when consecutively loading different pages for the same search query.
 
-#### Intersection of Results
+
+#### Document ranking
+
+#### Document intersection
 
 <p align="center">
-  <img width=40% src="../../doc/intersect.png">
+  <img width=25% src="../../doc/intersect.png">
 </p>
 
 
@@ -66,6 +131,8 @@ intersect = (data) => {...}
  */
 mergeIntersect = (L1, L2) => {...}
 ```
+
+## Information retrieval - metadata
 
 ## References
 
