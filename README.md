@@ -94,7 +94,7 @@ dataset
 
 - [document processing + construction of data models (CORD-19)]()
 - [web-application backend](web_application/backend/README.md)
-- [web-application frontend]()
+- [web-application frontend](web_application/frontend/README.md)
 
 
 ## Roadmap
