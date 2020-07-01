@@ -177,9 +177,9 @@ def get_document_title(fpath, dl=None):
     if dl is None: dl = DataLoader(fpath)
     return dl.get_title()
 
-def get_authors(fpath, dl=None):
+def get_authors(fpath, dl=None, plausibility_check=True, clean_names=True, normalize_names=True):
     if dl is None: dl = DataLoader(fpath)
-    return dl.get_authors()
+    return dl.get_authors(plausibility_check, clean_names, normalize_names)
 
 def get_bib_entries(fpath, dl=None):
     if dl is None: dl = DataLoader(fpath)
