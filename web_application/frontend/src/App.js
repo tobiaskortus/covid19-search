@@ -7,8 +7,8 @@ import Header from './components/Header';
 import Documents from './components/Documents';
 import WorldMap from './components/WorldMap';
 import Metadata from './components/Metadata';
-import AdditionalInfo from './components/AdditionalInfo';
 import BarChart from './components/BarChart';
+import Filter from './components/Filter';
 
 class App extends Component {
 
@@ -23,16 +23,20 @@ class App extends Component {
             similarTopics: [],
             countryMetadata: [],
             selectedDocument: undefined,
-            metadata: []
+            metadata: [],
+            filters: []
         };
     }
-
 
     loadDocuments = (newQuery) => {
         const page = this.state.currentPage - 1;
         const searchTerm = this.state.searchTerm;
+        const filters = JSON.stringify(this.state.filters);
 
-        fetch(`/search?term=${encodeURIComponent(searchTerm)}&page=${encodeURIComponent(page)}&numDocuments=${encodeURIComponent(10)}`)
+        fetch(`/search?term=${encodeURIComponent(searchTerm)}
+                      &page=${encodeURIComponent(page)}
+                      &numDocuments=${encodeURIComponent(10)}
+                      &filters=${encodeURIComponent(filters)}`)
             .then(res => res.json())
             .then(json => {
                 this.setState({pages: json.pages})
@@ -128,6 +132,26 @@ class App extends Component {
         }); 
     }
 
+    selectCountry(country) {
+        const filter = {
+            category: 'country',
+            value: country
+        };
+
+        if (!this.state.filters.some(x => x.value === country)) {
+            this.setState(prev_state => ({filters: [...prev_state.filters, filter]}), () => {
+                this.loadDocuments(false); 
+            })
+        }
+    }
+
+    deleteFilter(value) {
+        this.setState({filters: this.state.filters.filter(x => x.value != value)}, () => {
+            this.loadDocuments(false); 
+        });
+    }
+
+
     render() {
         return (
             <div className="App">
@@ -139,7 +163,7 @@ class App extends Component {
                 </Row>
                 <Row style={{padding: '60px'}}>
                     <Col md="6">
-                        <Row style={{paddingBottom: '50px'}}>
+                        <Row style={{paddingBottom: '25px'}}>
                             <div style={{maxWidth: '600px', contentAlign: 'left'}}>
                                 <SimilarTopics
                                     keywords={this.state.similarTopics}
@@ -150,6 +174,13 @@ class App extends Component {
                             {
                                 this.state.loadedDocuments.length !== 0 &&
                                 <div>
+                                    <div style={{paddingBottom: '15px'}} >
+                                        <Filter 
+                                            filters={this.state.filters}
+                                            onDeleteFilter={this.deleteFilter.bind(this)}/>
+                                    </div>
+                                    
+
                                     <Documents 
                                         documents={this.state.loadedDocuments}
                                         onSelectDocument={this.selectDocument.bind(this)}/>
@@ -163,10 +194,12 @@ class App extends Component {
                         </Row>
                     </Col>
                     <Col md="6">
-                        <Row style={{paddingBottom: '30px'}}>
-                            <WorldMap data={this.state.countryMetadata}/>
+                        <Row style={{paddingBottom: '30px', marginLeft: '50px'}}>
+                            <WorldMap 
+                                data={this.state.countryMetadata}
+                                onCountryClicked={this.selectCountry.bind(this)}/>
                         </Row>
-                        <Row>
+                        <Row style={{marginLeft: '50px'}}>
                             { 
                                 this.state.selectedDocument !== undefined ?
                                 <div style={{widht: '100%', display: 'flex'}}>
@@ -177,12 +210,7 @@ class App extends Component {
                                             onStatisticsClicked={this.fetchStatistics.bind(this)}/>
                                     </Col>
                                     <Col md="7">
-                                        <Row>
-                                            <BarChart data={this.state.metadata}/>
-                                        </Row>
-                                        <Row>
-                                            <AdditionalInfo/>
-                                        </Row>
+                                        <BarChart data={this.state.metadata}/>
                                     </Col>
                                 </div> 
                                 :

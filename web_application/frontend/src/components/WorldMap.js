@@ -41,6 +41,7 @@ class WorldMap extends Component {
     imageSeries.data = data;
     imageSeries.dataFields.value = "value";
 
+
     var imageTemplate = imageSeries.mapImages.template;
     imageTemplate.nonScaling = true
 
@@ -49,12 +50,11 @@ class WorldMap extends Component {
     circle.propertyFields.fill = "color";
     circle.tooltipText = "{name}: [bold]{value}[/]";
 
-
     imageSeries.heatRules.push({
       "target": circle,
       "property": "radius",
-      "min": 4,
-      "max": 15,
+      "min": 3,
+      "max": 30,
       "dataField": "value"
     });
 
@@ -73,6 +73,10 @@ class WorldMap extends Component {
       }
       return longitude;
     })
+
+    imageTemplate.events.on("hit", (e) => {
+      this.props.onCountryClicked(e.target.dataItem.dataContext.name)
+    });
 
     this.map = chart;
   }

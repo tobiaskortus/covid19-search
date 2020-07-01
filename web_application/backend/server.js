@@ -20,7 +20,7 @@ app.use(express.static(path.join(basePath, 'frontend', 'build')));
 const rank_weights = [0.55, 0.25, 0.2]
 
 const dbUri = 'mongodb://localhost:27017/';    //sudo systemctl start mongod
-const redis = RedisClient(27018, 'localhost'); //redis-server --maxmemory 10GB --maxmemory-policy allkeys-lru --port 27018
+const redis = RedisClient(27018, 'localhost'); //redis-server --maxmemory 2GB --maxmemory-policy allkeys-lru --port 27018
 const driver = neo4j.driver(
     'bolt://localhost:7687',
     neo4j.auth.basic('neo4j', 'password')
@@ -46,7 +46,6 @@ mergeIntersect = (L1, L2) => {
         }
     }
 
-    //Sort descending
     return R;
 }
 
@@ -165,7 +164,7 @@ getDocumentIdsFromMongodb = (query, dbo) => {
     return promise;
 }
 
-getDataFromCache = async(query, client) => {
+getDataFromCache = (query, client) => {
     var promise = new Promise((resolve, reject) => {
         const redisQuery = query._id.$in.join('_');
         client.get(redisQuery, (err, data) => {
@@ -301,7 +300,7 @@ getCountries = (doc_ids) => {
              WITH DISTINCT i as vi
              MATCH (vi)-[:LOCATED_IN]->(c:Country)
              WHERE c.code <> 'undefined'
-             return c.name as name, c.code as code, count(c.name) as count`, {doc_ids: doc_ids})
+             RETURN c.name as name, c.code as code, count(c.name) as count`, {doc_ids: doc_ids})
              .then((res) => {
                 countries = res.records.map(record => {
                     return { 
@@ -374,13 +373,65 @@ getInstitutionStatistics = (institutions) => {
     return promise;
 }
 
+filterByCountries = (doc_ids, countries) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        // Return all results if no country filter was defined
+
+        if (countries === undefined) {
+            resolve(doc_ids);
+            return promise;
+        }
+
+        session.run(
+            `MATCH (d:Document)
+             WHERE d.doc_id in $doc_ids
+             WITH d as vd
+             MATCH (vd)-[:WRITTEN_BY]->(a:Author)-[:WORKS_FOR]->(i:Institution)-[:LOCATED_IN]->(c:Country)
+             WHERE c.name in $countries
+             RETURN DISTINCT vd.doc_id as doc_id`, {doc_ids: doc_ids, countries: countries})
+            .then((res) => {
+                filtered = res.records.map(record => {
+                    return record.get('doc_id').low
+                });
+
+                resolve(filtered);
+                session.close();
+            });
+    });
+
+    return promise;
+}
+
+function groupFilters(arr) {
+    if (arr === undefined) {
+        return [];
+    }
+
+    var dict = {}
+
+    for (var i = 0; i < arr.length; i++) {
+        var item = arr[i];
+        var exists = dict[item.category] != undefined
+
+        dict[item.category] = (!exists) 
+            ? [item.value] 
+            : [...dict[item.category], item.value];
+    }
+
+    return dict;
+}
+
+
 app.get('/search', (req, res) => {
     const searchTerm = req.query.term;
-    const page = parseInt(req.query.page);
-    const numDocuments = parseInt(req.query.numDocuments);
-    const filter = req.query.filter;
     const query = getQeryFromTerm(searchTerm);
 
+    const page = parseInt(req.query.page);
+    const numDocuments = parseInt(req.query.numDocuments);
+    const filters = JSON.parse(req.query.filters);
+    const filters_grouped = groupFilters(filters);
+    
     getDataFromCache(query, redis).
     then((x) => { //TODO: Fix naming of results -> avoid collision with app.get -> res
         if(x.doc_ids == undefined || x.keyphrases == undefined) {
@@ -396,25 +447,28 @@ app.get('/search', (req, res) => {
                     const doc_ids = x.doc_ids;
                     const keyphrasesQuery = x.keyphrase_query;
 
-                    //Fetch keyphrases ids from database
-                    getKeyphrasesFromMongodb(keyphrasesQuery, dbo).
-                    then((keyphrases) => {
+                    filterByCountries(doc_ids, filters_grouped['country']).
+                    then((doc_ids) => {
+                        //Fetch keyphrases ids from database
+                        getKeyphrasesFromMongodb(keyphrasesQuery, dbo).
+                        then((keyphrases) => {
 
-                        addDataToCache(query, doc_ids, keyphrases, redis).
-                        then((success) => {
-                            if(success == true) {
-                                console.log('Added data to cache')
-                            }
-                        });
-                    
-                        //Fetch document data from database
-                        const pages = Math.ceil(doc_ids.length/numDocuments);
-                        const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
+                            addDataToCache(query, doc_ids, keyphrases, redis).
+                            then((success) => {
+                                if(success == true) {
+                                    console.log('Added data to cache')
+                                }
+                            });
+                        
+                            //Fetch document data from database
+                            const pages = Math.ceil(doc_ids.length/numDocuments);
+                            const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
 
-                        getDocumentsFromMongodb(load_doc_ids).
-                        then((documents) => {
-                            //TODO: Merge code duplicate
-                            res.status(200).send({documents: documents, pages: pages, keyphrases: keyphrases});
+                            getDocumentsFromMongodb(load_doc_ids).
+                            then((documents) => {
+                                //TODO: Merge code duplicate
+                                res.status(200).send({documents: documents, pages: pages, keyphrases: keyphrases});
+                            });
                         });
                     });
                 });
@@ -423,13 +477,18 @@ app.get('/search', (req, res) => {
             //Fetch document data from database
             const doc_ids = x.doc_ids;
             const keyphrases = x.keyphrases;
-            const pages = Math.ceil(doc_ids.length/numDocuments);
-            const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
+            
+            filterByCountries(doc_ids, filters_grouped['country']).
+            then(doc_ids => {
 
-            getDocumentsFromMongodb(load_doc_ids).then((documents) => {
-                //TODO: Merge code duplicate
-                res.status(200).send({documents: documents, pages: pages, keyphrases: keyphrases});   
-            });
+                const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
+                const pages = Math.ceil(doc_ids.length/numDocuments);
+
+                getDocumentsFromMongodb(load_doc_ids).then((documents) => {
+                    //TODO: Merge code duplicate
+                    res.status(200).send({documents: documents, pages: pages, keyphrases: keyphrases});   
+                });
+            })
         }        
     });
 });
@@ -438,16 +497,13 @@ app.get('/document', (req, res) => {
     const doc_id = parseInt(req.query.doc_id);
     getDocumentsFromMongodb([doc_id])
     .then(document => {
-        getDocumentMetadata(doc_id)
-        .then(metadata => {
-            const merged = {
-                'doc_id': document[0]._id,
-                'title': document[0].document_title,
-                'abstract': document[0].abstract,
-                'authors': metadata
-            };
-            res.status(200).send(merged);
-        });
+        const merged = {
+            'doc_id': document[0]._id,
+            'title': document[0].document_title,
+            'abstract': document[0].abstract,
+            'authors': document[0].authors
+        };
+        res.status(200).send(merged);
     });
 });
 

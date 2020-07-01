@@ -19,7 +19,7 @@ export class Documents extends Component {
                     {
                         document.authors.slice(0, Math.min(4, document.authors.length)).map(author => {
                             return(
-                                <Link style={{fontSize: "12px", color: 'green'}}>{author} - </Link>
+                                <Link style={{fontSize: "12px", color: 'green'}}>{author['author']} - </Link>
                             )
                         })
                     }

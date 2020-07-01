@@ -11,7 +11,7 @@ export class Metadata extends Component {
                 <ListGroup>
                     <ListGroup.Item>
                         <h7>{this.props.document.title}</h7> 
-
+                        <br></br>
                         <PictureAsPdfIcon onClick={this.props.onLinkClicked}/> 
                         <PersonIcon onClick={() => {
                             console.log('authors')
