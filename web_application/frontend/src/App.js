@@ -177,15 +177,16 @@ class App extends Component {
                         </Row>
                         <Row>
                             {
+                                (this.state.loadedDocuments.length !== 0 || this.state.filters.length !== 0) &&
+                                <div style={{paddingBottom: '15px'}} >
+                                    <Filter 
+                                        filters={this.state.filters}
+                                        onDeleteFilter={this.deleteFilter.bind(this)}/>
+                                </div>
+                            }
+                            {
                                 this.state.loadedDocuments.length !== 0 &&
-                                <div>
-                                    <div style={{paddingBottom: '15px'}} >
-                                        <Filter 
-                                            filters={this.state.filters}
-                                            onDeleteFilter={this.deleteFilter.bind(this)}/>
-                                    </div>
-                                    
-
+                                <div>               
                                     <Documents 
                                         documents={this.state.loadedDocuments}
                                         onSelectDocument={this.selectDocument.bind(this)}/>
