@@ -52,7 +52,7 @@ class App extends Component {
     loadCountries = () => {
         const searchTerm = this.state.searchTerm;
     
-        fetch(`/metadata?term=${encodeURIComponent(searchTerm)}`)
+        fetch(`/geo?term=${encodeURIComponent(searchTerm)}`)
             .then(res => res.json())
             .then(json => {
                 this.setState({countryMetadata: json.countries})
@@ -132,13 +132,18 @@ class App extends Component {
         }); 
     }
 
-    selectCountry(country) {
+    selectFilter(category, value) {
+
+        if (value == 'undefined')  {
+            return
+        }
+
         const filter = {
-            category: 'country',
-            value: country
+            category: category,
+            value: value
         };
 
-        if (!this.state.filters.some(x => x.value === country)) {
+        if (!this.state.filters.some(x => x.value === value)) {
             this.setState(prev_state => ({filters: [...prev_state.filters, filter]}), () => {
                 this.loadDocuments(false); 
             })
@@ -197,7 +202,7 @@ class App extends Component {
                         <Row style={{paddingBottom: '30px', marginLeft: '50px'}}>
                             <WorldMap 
                                 data={this.state.countryMetadata}
-                                onCountryClicked={this.selectCountry.bind(this)}/>
+                                onCountryClicked={this.selectFilter.bind(this)}/>
                         </Row>
                         <Row style={{marginLeft: '50px'}}>
                             { 
@@ -207,7 +212,9 @@ class App extends Component {
                                         <Metadata 
                                             document={this.state.selectedDocument}
                                             onLinkClicked={() => {console.log('load document')}}
-                                            onStatisticsClicked={this.fetchStatistics.bind(this)}/>
+                                            onStatisticsClicked={this.fetchStatistics.bind(this)}
+                                            onElementClicked={this.selectFilter.bind(this)}
+                                            />
                                     </Col>
                                     <Col md="7">
                                         <BarChart data={this.state.metadata}/>

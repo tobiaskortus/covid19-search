@@ -75,7 +75,7 @@ class WorldMap extends Component {
     })
 
     imageTemplate.events.on("hit", (e) => {
-      this.props.onCountryClicked(e.target.dataItem.dataContext.name)
+      this.props.onCountryClicked('country', e.target.dataItem.dataContext.name)
     });
 
     this.map = chart;

@@ -34,15 +34,29 @@ mergeIntersect = (L1, L2) => {
     R = []
     var i = 0; var j = 0; var u = L1[0]; var v = L2[0];
 
-    while(i < L1.length && j < L2.length) {
-        if (u['doc_id'] < v['doc_id']) {
-            i++; u = L1[i];
+    if(L1[0]['doc_id'] === undefined) { //intersect plain array
+        while(i < L1.length && j < L2.length) {
+            if (u < v) {
+                i++; u = L1[i];
+            }
+            else if (u > v) {
+                j++; v = L2[j];
+            } else {
+                R.push(u);
+                i++; j++; u = L1[i]; v = L2[j];
+            }
         }
-        else if (u['doc_id'] > v['doc_id']) {
-            j++; v = L2[j];
-        } else {
-            R.push({doc_id: u['doc_id'], rank: u['rank']+ v['rank']});
-            i++; j++; u = L1[i]; v = L2[j];
+    } else { //Intersect data structure
+        while(i < L1.length && j < L2.length) {
+            if (u['doc_id'] < v['doc_id']) {
+                i++; u = L1[i];
+            }
+            else if (u['doc_id'] > v['doc_id']) {
+                j++; v = L2[j];
+            } else {
+                R.push({doc_id: u['doc_id'], rank: u['rank']+ v['rank']});
+                i++; j++; u = L1[i]; v = L2[j];
+            }
         }
     }
 
@@ -403,6 +417,98 @@ filterByCountries = (doc_ids, countries) => {
     return promise;
 }
 
+filterByAuthor = (doc_ids, authors) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        // Return all results if no country filter was defined
+
+        if (authors === undefined) {
+            resolve(doc_ids);
+            return promise;
+        }
+
+        session.run(
+            `MATCH (d:Document)
+             WHERE d.doc_id in $doc_ids
+             WITH d as vd
+             MATCH (vd)-[:WRITTEN_BY]->(a:Author)
+             WHERE a.name in $authors
+             RETURN DISTINCT vd.doc_id as doc_id`, {doc_ids: doc_ids, authors: authors})
+            .then((res) => {
+                filtered = res.records.map(record => {
+                    return record.get('doc_id').low
+                });
+
+                resolve(filtered);
+                session.close();
+            });
+    });
+
+    return promise;
+}
+
+filterByInstitution = (doc_ids, institutions) => {
+    const session = driver.session();
+    var promise = new Promise((resolve, reject) => {
+        // Return all results if no country filter was defined
+
+        if (institutions === undefined) {
+            resolve(doc_ids);
+            return promise;
+        }
+
+        session.run(
+            `MATCH (d:Document)
+             WHERE d.doc_id in $doc_ids
+             WITH d as vd
+             MATCH (vd)-[:WRITTEN_BY]->(a:Author)-[:WORKS_FOR]->(i:Institution)
+             WHERE i.name in $institutions
+             RETURN DISTINCT vd.doc_id as doc_id`, {doc_ids: doc_ids, institutions: institutions})
+            .then((res) => {
+                filtered = res.records.map(record => {
+                    return record.get('doc_id').low
+                });
+
+                resolve(filtered);
+                session.close();
+            });
+    });
+
+    return promise;
+}
+
+filter = (doc_ids, grouped_filters) => {
+    var promise = new Promise((resolve, reject) => {
+        if (grouped_filters === undefined ||Object.keys(grouped_filters).length === 0) {
+            resolve(doc_ids);
+        } else {
+            run_filters = []
+
+            if(grouped_filters['country'] != undefined) {
+                run_filters.push(filterByCountries(doc_ids, grouped_filters['country']))
+            }
+
+            if(grouped_filters['author'] != undefined) {
+                run_filters.push(filterByAuthor(doc_ids, grouped_filters['author']))
+            }
+
+            if(grouped_filters['institution'] != undefined) {
+                run_filters.push(filterByInstitution(doc_ids, grouped_filters['institution']))
+            }
+
+            Promise.all(run_filters).then((filtered_doc_ids) => {
+                var intersected = filtered_doc_ids[0];
+                for (var i = 0; i < filtered_doc_ids.length-1; i++) {
+                    intersected = mergeIntersect(intersected, filtered_doc_ids[i+1]);
+                }
+                resolve(intersected)
+            }); 
+        }
+    });
+
+    return promise;
+}
+
 function groupFilters(arr) {
     if (arr === undefined) {
         return [];
@@ -447,7 +553,7 @@ app.get('/search', (req, res) => {
                     const doc_ids = x.doc_ids;
                     const keyphrasesQuery = x.keyphrase_query;
 
-                    filterByCountries(doc_ids, filters_grouped['country']).
+                    filter(doc_ids, filters_grouped).
                     then((doc_ids) => {
                         //Fetch keyphrases ids from database
                         getKeyphrasesFromMongodb(keyphrasesQuery, dbo).
@@ -478,7 +584,7 @@ app.get('/search', (req, res) => {
             const doc_ids = x.doc_ids;
             const keyphrases = x.keyphrases;
             
-            filterByCountries(doc_ids, filters_grouped['country']).
+            filter(doc_ids, filters_grouped).
             then(doc_ids => {
 
                 const load_doc_ids = doc_ids.slice(page*numDocuments, Math.min((page+1)*numDocuments));
@@ -507,7 +613,7 @@ app.get('/document', (req, res) => {
     });
 });
 
-app.get('/metadata', (req, res) => {
+app.get('/geo', (req, res) => {
     const searchTerm = req.query.term;
     const query = getQeryFromTerm(searchTerm);
     var doc_ids = undefined;

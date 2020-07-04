@@ -3,6 +3,8 @@ import { ListGroup } from 'react-bootstrap'
 import PictureAsPdfIcon from '@material-ui/icons/PictureAsPdf';
 import PersonIcon from '@material-ui/icons/Person';
 import ApartmentIcon from '@material-ui/icons/Apartment';
+import { Link } from '@material-ui/core';
+
 
 export class Metadata extends Component {
     render() {
@@ -28,7 +30,10 @@ export class Metadata extends Component {
                         {
                             this.props.document.authors.map((tuple) => {
                                 return(
-                                    <p style={{lineHeight: "0.6", fontSize: "12px"}}>{tuple.author} - {tuple.institution}</p>
+                                    <div>
+                                        <Link href="#"  style={{fontSize: '12px'}} onClick={() =>{this.props.onElementClicked('author', tuple.author)}}>{tuple.author} - </Link>
+                                        <Link href="#"  style={{fontSize: '12px'}} onClick={() =>{this.props.onElementClicked('institution', tuple.institution)}}>{tuple.institution}</Link>
+                                    </div>
                                 );
                             })
                         }
