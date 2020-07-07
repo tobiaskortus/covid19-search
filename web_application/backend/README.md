@@ -2,69 +2,99 @@
 
 ## API-endpoints
 
+The API of the backend can be devided into the interfaces used for the ad-hoc search and the those used for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). 
+
 <p align="center">
   <img width=40% src="../../doc/web_server_backedn_api_endpoints.png">
 </p>
 
 ### Ad-hoc search
 
+
+**Description:** returns a subset of valid documents as well as suitable keyphrases based on a given query as well as additional information.
+
 ```javascript
 app.get('/search', (req, res) => {...}
 ```
 
-This requests expects, as dispicted below, a search term as string, the selected page and the number of documents displayed per page. For exact encoding of the url-parameters please refer to the documention of the [web-application frontend]().
-
-```json
-{
-  term: ...,
-  page: ...,
-  numDocuments: ...
-}
-```
+|Request Parameter|Type|Description|
+|---|---|---
+|`term`|`string`|the search term that should used for the information retrieval task |
+|`page`|`int`|the current page (as displayed in frontent) that should be taken as a start point for the documents|
+|`numDocs`|`int`|number of documents to be loaded|
 
 
-### Metadata analysis
+|Respond Parameter|Type|Description|
+|---|---|---|
+|`documents`|`object`|loaded documents (as defined by search term page and number of documents to load)|
+|`pages`|`int`|number of possible pages for the specified search query|
+|`keyphrases`|`object`|important key phrases that are extracted from the highest scored documents from the current document retrieval|
+
+</br>
+
+### Metadata Analysis
+
+#### Document Metadata
+
+**Description:** returns basic information for a specified document (doc_id) containing the title, abstract, authors and involved institutions.
 
 ```javascript
 app.get('/document', (req, res) => {...}
 ```
 
-```json
-{
-    doc_id: ...
-}
-```
+|Request Parameter|Type|Description|
+|---|---|---
+|`doc_id`|`int`|The document id of the document that should be loaded from db|
+
+
+|Respond Parameter|Type|Description|
+|---|---|---|
+|`document`|`object`|loaded document|
+
+</br>
+
+#### Geographical statistic
+
+**Description:** returns a statistic of the geographical location of institutions involved in a set of given papers (defined by search term).
 
 ```javascript
-app.get('/metadata', (req, res) => {...}
+app.get('/geo', (req, res) => {...}
 ```
 
-```json
-{
-  term: ...
-}
-```
+|Request Parameter|Type|Description|
+|---|---|---
+|`term`|`string`|the search term that should be taken into account for the statistic |
+
+|Respond Parameter|Type|Description|
+|---|---|---|
+|`countries`|`object`|contry statistics containing the country code (used for visualization), the name of the country, the number of documents for each country and a placeholder for the color variable (variable is set in frontend)|
+
+</br>
+
+#### Author/ Institution Statistic
+
+**Description:** returns a statistic of a specific author or institution containing currently the number of documents published.
 
 ```javascript
 app.get(`/statistics`, (req, res) => {...}
 ```
 
-```json
-{
-  type: ...
-  params: [
-    ...,
-    ...
-  ]
-}
-```
+|Request Parameter|Type|Description|
+|---|---|---|
+|`type`|`string`|the type of statistic that sould be processed (either `'author'` or `'institution'`) |
+|`params`|`object`|additional parameters that are required in order to fetch the necessary data from the graph database|
 
+</br>
 
 ## Information retrieval - Ad-hoc
 
 ### Preprocessing of the given search query
 
-The preprocessing of the search query given by the arguments of the /search page takes place in the`getQeryFromTerm` function.
+The preprocessing of the search query given by the arguments of the /search page takes place in the`getQeryFromTerm` function. In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following three steps are hereby performed:
+
+- **splitting:** The given search query is split into a list of individual strings by whitespaces. 
+- **stemming:** the word stem is formed for each of the words from the split set using the [natural](https://github.com/NaturalNode/natural) package.
+- **conversion into query:** in a final step the list of search terms are transformed to a valid MQL query which can be processed by the mongodb database.
 
 ```javascript
 /**
@@ -73,12 +103,6 @@ The preprocessing of the search query given by the arguments of the /search page
  */
 getQeryFromTerm = (searchTerm) => {...}
 ```
-
-In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following two steps are performed:
-
-- **splitting:** The given search query is split into a list of individual strings by whitespaces. 
-- **stemming:** the word stem is formed for each of the words from the split set using the [natural](https://github.com/NaturalNode/natural) package.
-- **conversion in query:** in a final step the list of search terms are transformed to a valid query which can be processed by mongodb
 
 ### Data retrieval from database
 
@@ -132,6 +156,45 @@ addDataToCache = (query, doc_ids, keyphrases, client) => {...}
 
 
 #### Document ranking
+In order to determine a ranking of the importance of the documents based on a given query a document ranking is performed by the backend in the function `ranking`
+
+```javascript
+/**
+ * @param documents containing the document id and the count of the term occurence 
+ * @returns rank scores for all documents
+ */
+ranking = (data) => {...}
+```
+
+
+
+For the ranking process a modified version of the weighted zone scoring [2] is used. In the basic version of the mentioned scoring system. The rank of the document is determined solely by the occurence of the word in a specific zone (e.g. title, abstract, body) of the document <img src="https://render.githubusercontent.com/render/math?math=s_{i} = [0, 1]">  weighted by a set of weights <img src="https://render.githubusercontent.com/render/math?math=g_{i} \in [0, 1]"> with <img src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l}g_{i} = 1">.
+
+<p align="center">
+  <img width=12% src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l} g_{i}s_{i}">
+</p>
+
+In order to reward documents with a high occurence of the word the scoring function is modified by a nomalized word count factor, where  <img src="https://render.githubusercontent.com/render/math?math=s_{i}"> is defined by the fraction of the number of occurences of the term in the current document devided by the highest occurence of the term in any document.
+
+These normalized occurence factors are calculated using the `getNormalizationFactors` and 
+`getRankScore` function.
+
+```javascript
+/**
+ * @param documents containing the document id and the count of the term occurence 
+ * @returns normalization factors for all document zones (title, abstract, body)
+ */
+getNormalizationFactors(data) => {...}
+```
+
+
+```javascript
+/**
+ * @param count of the term occurence in the doument zones (title, abstract, body)
+ * @returns rank score for the given document
+ */
+getRankScore(count_obj, norm_factors) => {...}
+```
 
 #### Document intersection
 
@@ -168,6 +231,45 @@ mergeIntersect = (L1, L2) => {...}
 
 ## Information retrieval - metadata
 
+The following sections describes the basic functionality of the metadata analysis for information retrieval in order to gain additional insights (on top of the ad-hoc) on the research topic.
+The current state of the matadata analysis can be devided into two main topics which are designed to provide additional information each on the geographical statistics of the publications for a given ad-hoc search request and on the overall statistics of the dataset regardin to the publications of different authors and institutions.
+
+### Geographical Statistics
+
+In order to retrieve the statistic of the geographical location of institutions involved in a set of given papers, defined by a previous ad-hoc search request. The initial preprocessing is in its structure in most parts similar to the previously described ad-hoc search. Basis of the whole process is the search term that is given by the request parameter (as described in the section [Data retrieval from database]()). In most cases the intersected document ids are loaded from the cache. If the data is not represented in the cache the data is loaded in a similar manner as described in the previously mentioned section. The main difference is that the document ranking is skipped due to the performance impact of the ranking process, which has no impact on the following retrieval of the geographical statistics.
+
+The processed document ids are then taken into account in order to get the statistics of geographical location of institutions using the `getCountries` function that performs a search query on the Neo4j metadata property graph which is described in detail in the documentation  [document processing + construction of data models (CORD-19)]().
+
+```javascript
+/**
+ * @param document ids as retrieved from the ad-hoc search
+ * @returns a list of represented countries with additional information 
+ *          (name, ISO3166 alpha-2 country code, number of publications)
+ */
+getCountries = (doc_ids) => {...}
+```
+
+
+### Author/ Institution Statistics
+
+
+
+```javascript
+getAuthorStatistics = (authors) => {...}
+```
+
+
+```javascript
+getInstitutionStatistics = (institutions) => {...}
+```
+
+
+```javascript
+
+```
+
 ## References
 
 [1] Sunghwan Kim, Taesung Lee, Seung Won Hwang, andSameh Elnikety. List intersection for web search: Algo-rithms, cost models, and optimizations.Proceedings ofthe VLDB Endowment, 12(1):1–13, 2018.
+
+[2] Christopher D. Manning, Prabhakar Raghavan, and Hinrich Schütze. 2008. Introduction to Information Retrieval. Cambridge University Press, USA.
