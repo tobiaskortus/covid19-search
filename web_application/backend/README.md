@@ -1,8 +1,18 @@
 # Backend Server
 
+The backend server is one of the main components of the search engine and functions as the information retrieval system. The backend is designed using the Node.js javascript runtime. 
+Over the default packages the following packages for addressing the different kind of databases as well as for basic natural language processing tasks.
+
+- natural https://github.com/NaturalNode/natural
+- MongoDB Node.JS Driver https://mongodb.github.io/node-mongodb-native/
+- Neo4j Javascript Driver https://neo4j.com/developer/javascript/, https://github.com/neo4j/neo4j-javascript-driver
+- redis https://github.com/NodeRedis/node-redis
+
+> Note: The required packages are defined in the `package.json` file. Running the command `npm install` should install these requirements automatically without further manual installation.
+
 ## API-endpoints
 
-The API of the backend can be devided into the interfaces used for the ad-hoc search and the those used for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). 
+The API of the backend can be devided into the enpoints used for the ad-hoc search and the those used for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). A detailed view over the fuctionality of the backend is described afterwards.
 
 <p align="center">
   <img width=40% src="../../doc/web_server_backedn_api_endpoints.png">
@@ -144,7 +154,7 @@ getDataFromCache = (query, client) => {...}
 addDataToCache = (query, doc_ids, keyphrases, client) => {...}
 ```
 
- Per default 2GB are assigned to the redis database which is in the most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. Anyway the maxmemory configuration of the database is set to a least recent out strategy. 
+ Per default 2GB are assigned to the redis database which is in the most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. nevertheless, to avoid the cache from crashing if the elements cached should exceed the assigned memory, the maxmemory configuration of the database is set to a least recent out strategy. 
 
 </br>
 
@@ -167,11 +177,10 @@ ranking = (data) => {...}
 ```
 
 
-
 For the ranking process a modified version of the weighted zone scoring [2] is used. In the basic version of the mentioned scoring system. The rank of the document is determined solely by the occurence of the word in a specific zone (e.g. title, abstract, body) of the document <img src="https://render.githubusercontent.com/render/math?math=s_{i} = [0, 1]">  weighted by a set of weights <img src="https://render.githubusercontent.com/render/math?math=g_{i} \in [0, 1]"> with <img src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l}g_{i} = 1">.
 
 <p align="center">
-  <img width=12% src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l} g_{i}s_{i}">
+  <img width=10% src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l} g_{i}s_{i}">
 </p>
 
 In order to reward documents with a high occurence of the word the scoring function is modified by a nomalized word count factor, where  <img src="https://render.githubusercontent.com/render/math?math=s_{i}"> is defined by the fraction of the number of occurences of the term in the current document devided by the highest occurence of the term in any document.
@@ -187,7 +196,6 @@ These normalized occurence factors are calculated using the `getNormalizationFac
 getNormalizationFactors(data) => {...}
 ```
 
-
 ```javascript
 /**
  * @param count of the term occurence in the doument zones (title, abstract, body)
@@ -196,7 +204,9 @@ getNormalizationFactors(data) => {...}
 getRankScore(count_obj, norm_factors) => {...}
 ```
 
-#### Document intersection
+#### Document Intersection
+
+The prevously retrieved lists of document ids containing the matched document ids for on of the word stems that are presented in the search query still require some additional processing in order to return only the document ids that match all word stems. Therefor a list intersection is performed, as displayed in Fig 2, in order to find the mentioned subset of documents.
 
 <p align="center">
   <img width=25% src="../../doc/intersect.png">
@@ -219,7 +229,6 @@ The intersection of the search results are computated based on <img src="https:/
 intersect = (data) => {...}
 ```
 
-
 ```javascript
 /**
  * @param L1 first list to intersect
@@ -229,6 +238,42 @@ intersect = (data) => {...}
 mergeIntersect = (L1, L2) => {...}
 ```
 
+
+#### Country, Institution and Author Filters 
+In order to encolse the search further, the search engine enables the user to filter the documents for additional specific properties. Currently those support filtering for specific Locations, Authors and Institutions. The filtering process is directly integrated into the ad-hoc retrieval and is performed after the retrieval of the matching document ids. In a first step the filters, which are transmitted by the frontend as a http request parameter, are grouped based on their category (country, author, institution) into groups using the `groupFilters` method.
+
+```javascript
+/**
+ * @param ungrouped filters (array of objects with the properties category and value)
+ * @returns a list of grouped filtes (array of objects with the properties category and values)
+ */
+groupFilters = (arr) => {...}
+```
+
+Those grouped filters are then applied to the document ids that are matched to the current search term in parralel based on the filter category using either the function `filterByCountries`, `filterByAuthor` or `filterByInstitution`. Afterward the results are merged using the same intersection technique as previously described in [Document Intersection](), as this technique has proven to be more efficient than applying the filters recursive on the list of document ids. 
+
+
+```javascript
+/**
+ * @param matched document ids
+ * @param list of grouped filters
+ * @returns filtered list of document ids
+ */
+filter = (doc_ids, grouped_filters) => {...}
+```
+
+
+```javascript
+/**
+ * @param matched document ids
+ * @param list of filter elements (either countries, authors or institutions)
+ * @returns filtered list of document ids (by single category)
+ */
+filterByCountries = (doc_ids, countries) => {...}
+filterByAuthor = (doc_ids, authors) => {...}
+filterByInstitution = (doc_ids, institutions) => {...}
+```
+
 ## Information retrieval - metadata
 
 The following sections describes the basic functionality of the metadata analysis for information retrieval in order to gain additional insights (on top of the ad-hoc) on the research topic.
@@ -236,7 +281,7 @@ The current state of the matadata analysis can be devided into two main topics w
 
 ### Geographical Statistics
 
-In order to retrieve the statistic of the geographical location of institutions involved in a set of given papers, defined by a previous ad-hoc search request. The initial preprocessing is in its structure in most parts similar to the previously described ad-hoc search. Basis of the whole process is the search term that is given by the request parameter (as described in the section [Data retrieval from database]()). In most cases the intersected document ids are loaded from the cache. If the data is not represented in the cache the data is loaded in a similar manner as described in the previously mentioned section. The main difference is that the document ranking is skipped due to the performance impact of the ranking process, which has no impact on the following retrieval of the geographical statistics.
+In order to retrieve the statistic of the geographical location of institutions involved in a set of given papers, defined by a previous ad-hoc search request. The initial preprocessing is in its structure in most parts is similar to the previously described ad-hoc search. Basis of the whole process is the search term that is given by the request parameter (as described in the section [Data retrieval from database]()). In most cases the intersected document ids are loaded from the cache. If the data is not represented in the cache the data is loaded in a similar manner as described in the previously mentioned section. The main difference is that the document ranking is skipped due to the performance impact of the ranking process, which has no impact on the following retrieval of the geographical statistics.
 
 The processed document ids are then taken into account in order to get the statistics of geographical location of institutions using the `getCountries` function that performs a search query on the Neo4j metadata property graph which is described in detail in the documentation  [document processing + construction of data models (CORD-19)]().
 
@@ -252,20 +297,22 @@ getCountries = (doc_ids) => {...}
 
 ### Author/ Institution Statistics
 
-
+In order to get some additional information about the relevance of specific authors and institutions in the field of COVID-19 the metadata graph database can be queried for additional statistics (currently limited to the number of publications) The type of statistic that should be fetched from the database is defined by the `type` property in the http request. Based on this property the corresponding function, either `getAuthorsStatistics` or `getInstitutionStatistics`, is called. In those functions the required data is loaded from the Neo4j graph database and afterwards returned to the frontend via the http response.
 
 ```javascript
+/**
+ * @params names of authors represented in paper
+ * @returns authors with corresponding number of publications found in the CORD-19 dataset
+ */
 getAuthorStatistics = (authors) => {...}
 ```
 
-
 ```javascript
+/**
+ * @params names of institutions represented in paper
+ * @returns institutions with corresponding number of publications found in the CORD-19 dataset
+ */
 getInstitutionStatistics = (institutions) => {...}
-```
-
-
-```javascript
-
 ```
 
 ## References
