@@ -95,7 +95,7 @@ dataset
 
 ## Documentation of specific components
 
-- [document processing + construction of data models (CORD-19)]()
+- [document processing + construction of data models (CORD-19)](processing/README.md)
 - [web-application backend](web_application/backend/README.md)
 - [web-application frontend](web_application/frontend/README.md)
 
