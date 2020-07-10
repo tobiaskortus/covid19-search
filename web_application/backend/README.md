@@ -12,7 +12,7 @@ Over the default packages the following packages for addressing the different ki
 
 ## API-endpoints
 
-The API of the backend can be devided into the enpoints used for the ad-hoc search and the those used for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). A detailed view over the fuctionality of the backend is described afterwards.
+The API of the backend can be devided into two enpoints used for the ad-hoc search and for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). A detailed view over the fuctionality of the backend is described afterwards.
 
 <p align="center">
   <img width=40% src="../../doc/web_server_backedn_api_endpoints.png">
@@ -100,11 +100,11 @@ app.get(`/statistics`, (req, res) => {...}
 
 ### Preprocessing of the given search query
 
-The preprocessing of the search query given by the arguments of the /search page takes place in the`getQeryFromTerm` function. In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following three steps are hereby performed:
+The first task in the ad-hoc information retireval pricess is the preprocessing of the search query given by the arguments of the  http request which is performed in the`getQeryFromTerm` function. In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following three steps are hereby performed:
 
-- **splitting:** The given search query is split into a list of individual strings by whitespaces. 
-- **stemming:** the word stem is formed for each of the words from the split set using the [natural](https://github.com/NaturalNode/natural) package.
-- **conversion into query:** in a final step the list of search terms are transformed to a valid MQL query which can be processed by the mongodb database.
+- **splitting:** The given search query is split by whitespaces into a list of individual strings. 
+- **stemming:** A word stem is formed for each of the words from the split set using the [natural](https://github.com/NaturalNode/natural) package.
+- **conversion into query:** In a final step the list of search terms are transformed to a valid MQL query which can be processed by the mongodb database.
 
 ```javascript
 /**
@@ -116,19 +116,19 @@ getQeryFromTerm = (searchTerm) => {...}
 
 ### Data retrieval from database
 
-The previously constructed query is used in the following step using the function  `getDocumentIdsFromMongodb` in order to return a list of document ids, with the additional information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. 
+The previously constructed query is then utilized in the `getDocumentIdsFromMongodb` function in order to return a list of document objects containing the document ids, and further additional information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. 
 
 
 ```javascript
 /**
- * @param search query as given by getQeryFromTerm
+ * @param MQL query as given by getQeryFromTerm
  * @param the connection object to the mongodb database
  * @returns all matched document ids
  */
 getDocumentIdsFromMongodb = (query, dbo) => {...}
 ```
 
-These results are then consecutively ranked and the lists are intersected in order to return the matching documents that match all elements of the query. In a final step the documents based on on the page and number of documents per pages as defined in the request arguments are loaded from the database using the `getDocumentsFromMongodb` function and returned as the http response.
+These results are then consecutively ranked, as described below, by their relevance regarding to the given search query and the lists are then intersected in order to return those documents that match all elements of the query. In a final step a subset of documents based on on the specified page and number of documents per pages, as defined in the request arguments, are loaded from the database using the `getDocumentsFromMongodb` function. 
 
 ```javascript
 /**
@@ -138,23 +138,40 @@ These results are then consecutively ranked and the lists are intersected in ord
 getDocumentsFromMongodb = (doc_ids) => {...}
 ```
 
-In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in memory cache is implemented using a redis database. Hereby the processed result of search queries are stored in the redis cache using the `getDataFromCache` function in order to seed up future requests which can be fetched using `getDataFromCache`. 
+As a second result of the ad-hoc search request a set of keyphrases that are relevant in the context of the given search term are processed. The query operation for the keyphrases is performed using the ten most relevant documents as determinded by the ranking using the `getKeyphrasesFromMongodb` function. The results containing the selected documents as well as the determined keyphrases are concatinated into a single object and returned in the http response.
+
+```javascript
+/**
+ * @param MQL query containing all vaid document ids
+ * @param the connection object to the mongodb database
+ * @returns the top ten most relevant matched keyphrases
+ */
+getKeyphrasesFromMongodb = (query, dbo) => {...}
+```
+
+In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in-memory cache is implemented using a redis database. Hereby the processed result of a search query is stored in the redis cache using the `addDataToCache` function in order to seed up future requests which can be fetched using the `getDataFromCache` function. 
 
 
 ```javascript
 /**
- * @param
- * @param
- * @returns
+ * @param the given query for a search request
+ * @param a object holding the current connection to the redis database
+ * @returns the cached document ids and keyphrases
  */
 getDataFromCache = (query, client) => {...}
 ```
 
 ```javascript
+/**
+ * @param the given query for a search request
+ * @param a list of document ids that were loaded based on the specified query
+ * @param a list of keyphrases that were loaded based on the specified query
+ * @param a object holding the current connection to the redis database
+ */
 addDataToCache = (query, doc_ids, keyphrases, client) => {...}
 ```
 
- Per default 2GB are assigned to the redis database which is in the most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. nevertheless, to avoid the cache from crashing if the elements cached should exceed the assigned memory, the maxmemory configuration of the database is set to a least recent out strategy. 
+ Per default 2GB are assigned to the redis database which is in most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. Nevertheless, to avoid the database from crashing if the elements cached in the database should exceed the assigned memory, the maxmemory configuration of the database is set to a least recent out strategy. 
 
 </br>
 
@@ -165,8 +182,43 @@ addDataToCache = (query, doc_ids, keyphrases, client) => {...}
 **Fig 2:** Processing pipeline for ad-hoc search using the MongoDB data model, the processing logic and an intermediate redis cache in order to improve responsiveness and speed expecially when consecutively loading different pages for the same search query.
 
 
+#### Document Intersection
+
+The retrieved lists of document ids, as described in the previous section, containing the matched document ids for one of the word stems that are presented in the search query still require some additional processing in order to return only the document ids that match all word stems. Therefor a list intersection is performed, as displayed in Fig 2, in order to find the mentioned subset of documents.
+
+<p align="center">
+  <img width=25% src="../../doc/intersect.png">
+</p>
+
+**Fig 2:** Symbolic representation of three sets of document results based on a search query <img src="https://render.githubusercontent.com/render/math?math=M_{A}">, <img src="https://render.githubusercontent.com/render/math?math=M_{B}"> and <img src="https://render.githubusercontent.com/render/math?math=M_{C}"> determined on the basis of the components <img src="https://render.githubusercontent.com/render/math?math=A">, <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=C"> of  a search query <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=A B C">, as well as their final search result consisting of the intersection <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=M_{A,B,C} = M_{A} \cap M_{B} \cap M_{C}">
+
+</br>
+
+With regards to the memory and runtime requirements it is recommended to perform these operations on the database level instead of the application level. Nevertheless in this project the mentioned operations were moved to the application layer in order to make adjustments regarding to the document ranking and implementation of different IR algorithms as dynamic as possible. Due to the small size of the data set, no significant restrictions in speed and memory consumtion are expected.
+
+The intersection of the search results is performed based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm, where <img src="https://render.githubusercontent.com/render/math?math=n">  corresponds to the number of lists containing the ranked documents thath were loaded from the database as described before <cite>[1]</cite>. This operation is performed in the function `intersect` which uses the the actual implementation of the 2-way-merge algorihm that is located in the `mergeIntersect` method.
+
+
+```javascript
+/**
+ * @param data nested list of documents identified by information retrieval
+ * @returns ranked list of intersected documents identified by boolean IR
+ */
+intersect = (data) => {...}
+```
+
+```javascript
+/**
+ * @param L1 first list to intersect
+ * @param L2 second list to intersect
+ * @returns list of intersected items
+ */
+mergeIntersect = (L1, L2) => {...}
+```
+
+
 #### Document ranking
-In order to determine a ranking of the importance of the documents based on a given query a document ranking is performed by the backend in the function `ranking`
+In order to determine a ranking of the importance of the documents based on a given query, a document ranking is performed by the backend using the function `ranking`.
 
 ```javascript
 /**
@@ -177,7 +229,7 @@ ranking = (data) => {...}
 ```
 
 
-For the ranking process a modified version of the weighted zone scoring [2] is used. In the basic version of the mentioned scoring system. The rank of the document is determined solely by the occurence of the word in a specific zone (e.g. title, abstract, body) of the document <img src="https://render.githubusercontent.com/render/math?math=s_{i} = [0, 1]">  weighted by a set of weights <img src="https://render.githubusercontent.com/render/math?math=g_{i} \in [0, 1]"> with <img src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l}g_{i} = 1">.
+For the ranking process a modified version of the weighted zone scoring [2] is used. In the basic version of the mentioned scoring system the rank of the document is determined solely by the occurence of the word in a specific zone (e.g. title, abstract, body) of the document <img src="https://render.githubusercontent.com/render/math?math=s_{i} = [0, 1]">  weighted by a set of weights <img src="https://render.githubusercontent.com/render/math?math=g_{i} \in [0, 1]"> with <img src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l}g_{i} = 1">.
 
 <p align="center">
   <img width=10% src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l} g_{i}s_{i}">
@@ -204,43 +256,8 @@ getNormalizationFactors(data) => {...}
 getRankScore(count_obj, norm_factors) => {...}
 ```
 
-#### Document Intersection
-
-The prevously retrieved lists of document ids containing the matched document ids for on of the word stems that are presented in the search query still require some additional processing in order to return only the document ids that match all word stems. Therefor a list intersection is performed, as displayed in Fig 2, in order to find the mentioned subset of documents.
-
-<p align="center">
-  <img width=25% src="../../doc/intersect.png">
-</p>
-
-**Fig 2:** Symbolic representation of three sets of document results based on a search query <img src="https://render.githubusercontent.com/render/math?math=M_{A}">, <img src="https://render.githubusercontent.com/render/math?math=M_{B}"> and <img src="https://render.githubusercontent.com/render/math?math=M_{C}"> determined on the basis of the components <img src="https://render.githubusercontent.com/render/math?math=A">, <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=C"> of  a search query <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=A B C">, as well as their final search result consisting of the intersection <img src="https://render.githubusercontent.com/render/math?math=B"> und <img src="https://render.githubusercontent.com/render/math?math=M_{A,B,C} = M_{A} \cap M_{B} \cap M_{C}">
-
-</br>
-
-With regards to the memory and runtime requirements it is recommended to perform these operations on the database level instead of the application level. Nevertheless in this project the mentioned operations were moved to the application layer in order to make adjustments regarding the document ranking and implementation of different IR algorithms as dynamic as possible. Due to the small size of the data set, no significant restrictions in speed and memory consumtion are expected.
-
-The intersection of the search results are computated based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm using <img src="https://render.githubusercontent.com/render/math?math=n"> lists of ranked documents loaded from the database based on the search stems as described before <cite>[1]</cite>. This operation is performed in the function `intersect` in `server.js` . The actual implementation of the 2-way-merge algorihm is located in the `mergeIntersect` method which is also located in `server.js` 
-
-
-```javascript
-/**
- * @param data nested list of documents identified by information retrieval
- * @returns ranked list of intersected documents identified by boolean IR
- */
-intersect = (data) => {...}
-```
-
-```javascript
-/**
- * @param L1 first list to intersect
- * @param L2 second list to intersect
- * @returns list of intersected items
- */
-mergeIntersect = (L1, L2) => {...}
-```
-
-
 #### Country, Institution and Author Filters 
-In order to encolse the search further, the search engine enables the user to filter the documents for additional specific properties. Currently those support filtering for specific Locations, Authors and Institutions. The filtering process is directly integrated into the ad-hoc retrieval and is performed after the retrieval of the matching document ids. In a first step the filters, which are transmitted by the frontend as a http request parameter, are grouped based on their category (country, author, institution) into groups using the `groupFilters` method.
+In order to enclose the search further, the search engine enables the user to filter the documents for additional specific properties. Currently those support filtering for specific locations, authors and institutions. The filtering process is directly integrated into the ad-hoc retrieval and is performed after the query of the matching document ids. In a first step the filters, which are transmitted by the frontend as a http request parameter, are grouped based on their category (country, author, institution) using the `groupFilters` method.
 
 ```javascript
 /**
@@ -250,7 +267,7 @@ In order to encolse the search further, the search engine enables the user to fi
 groupFilters = (arr) => {...}
 ```
 
-Those grouped filters are then applied to the document ids that are matched to the current search term in parralel based on the filter category using either the function `filterByCountries`, `filterByAuthor` or `filterByInstitution`. Afterward the results are merged using the same intersection technique as previously described in [Document Intersection](), as this technique has proven to be more efficient than applying the filters recursive on the list of document ids. 
+Those grouped filters are then applied based on the filter category to the document ids that are matched to the current search term in parralel, using either the function `filterByCountries`, `filterByAuthor` or `filterByInstitution`. Afterward the results are merged using the same intersection technique as previously described in [Document Intersection](), as this technique has proven to be more efficient than applying the filters recursive on the list of document ids. 
 
 
 ```javascript

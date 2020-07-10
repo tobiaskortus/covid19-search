@@ -94,7 +94,7 @@ getNormalizationFactors = (data) => {
 }
 
 
-get_rank_score = (count_obj, norm_factors) => {
+getRankScore = (count_obj, norm_factors) => {
     return (rank_weights[0] * count_obj['title']/norm_factors[0] +
             rank_weights[1] * count_obj['abstract']/norm_factors[1] + 
             rank_weights[2] * count_obj['body_text']/norm_factors[2]);
@@ -104,7 +104,7 @@ ranking = (data) => {
     norm_factors = getNormalizationFactors(data);
     return data.map((stem, i) => {
         return stem['doc_ids'].map(doc => {
-            return {doc_id: doc['doc_id'], rank: get_rank_score(doc['count'], norm_factors[i])}
+            return {doc_id: doc['doc_id'], rank: getRankScore(doc['count'], norm_factors[i])}
         });
     });
 }
@@ -509,7 +509,7 @@ filter = (doc_ids, grouped_filters) => {
     return promise;
 }
 
-function groupFilters(arr) {
+groupFilters = (arr) => {
     if (arr === undefined) {
         return [];
     }
