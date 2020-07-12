@@ -1,10 +1,17 @@
-# Processing
+# Document Processing + Construction of the Data Models
 
-This readme file describes the perocessing of the CORD-19 dataset in order to provide a suitable set of data models for the information retrieval task. This directory includes all relevant scripts for processing the CORD-19 data for using them in the search engine. Before performing the processing the [required prerequesites](../README.md) should be installed and configured.
+The following sections of this document describe the preprocessing and processing of the CORD-19 dataset in order to provide a suitable set of data models for the information retrieval tasks used in the search engine. The `/processing` directory includes all relevant scripts used for the processing of the CORD-19 dataset as described in the following sections. Before running those scrits the [required prerequesites](../README.md) should be installed and configured.
 
-The processing of the given dataset, in order to create the data models for the search engine, consists of two two parts. First the given documents which are given in a json format are preprocessed in order to extract the relevant information and perform additional data cleaning and a vertical data migration from diferent sources. After that the processed data is used in order to create the required datamodels that are used for the information retrieval task (document index, inverted index, metadata property graph).
+## Overview
 
-The preprocessing step can be divided into three components. The extraction and processing of the authors and institutions, the preprocessing of the document text, containing the title, abstract and body and the processing of the references of the cited papers. 
+The processing of the given dataset consists of two main parts. First the documents of the CORD-19 dataset which are given in a json format are preprocessed using the following steps:
+
+- extract the relevant information from the file
+- perform additional data cleaning 
+-  vertical data migration from additional sources (GRID, ISO 3166-1 Codes)
+
+Hereby the preprocessing, as depicted in fig 1, takes place in three different domains. The extraction and processing of the authors and institutions, the paper content (title, abstract and body) and the references of the cited papers. The processed data from the different domains are then used in order to create the required data models (document index, inverted index, metadata property graph) that are used for the information retrieval task.
+
 
 > Note: The processing of the references is currently not used due to the poor performance.
 
@@ -18,10 +25,7 @@ The preprocessing step can be divided into three components. The extraction and 
 
 </br>
 
-## Inverted Index and Document Index Construction
-
-The processing and creation of the inverted index and document index data model is performed in the `document-index-construction-mongodb.ipynb` notebook using additional utility functions from `literature.py`, `preprocessing.py`, `grid.py` and `metadata.py`.
-
+## CORD-19 Preprocessing
 
 ### Authors/ Insitutions Processing
 The raw information on the involved authors and institutions are extracted from the json file using the functionality implemented in the `DataLoader` class in `literature.py`. The raw information is further processed by multiple tasks which can be selected based on the desired data policy (keep all data, remove invalid data).
@@ -33,11 +37,6 @@ The authors which are each represented as a own object containing a first name, 
 - **plausibility check (`__is_name`):** basic check whether the given name is plausible. The given name is invalid if the length of the last name is shorter than two characers, the first name does not contain any valid character or fist name is empty or whitespace.
 
 The extracted institution can be also further processed using the `__parse_institution` function either to check the plausibility of an insitution or to expand the data by the geographical location of the institution. The matching of the institutions both for the plausibility check and the location lookup the Global Research Identifier Database [2] and a list of ISO 3166-1 Codes [3] is used (please refer to the References section for additional credits on the used datasets).
-
-
-
-
-
 
 
 ### Document Preprocessing
@@ -53,11 +52,33 @@ Therefore a number of various steps are performed on each section of the documen
 - Removal of symbols and single characters `SymbolRemover`, `NonAlphanumericRemover`
 - Stemming `Stemmer`
 
-After that a list of stopwords that exist in the given text is returned. In order to improve the performance of the following creation of the inverted index, duplicate word stems are grouped using the `collections.Counter` datatype which can be used for counting hashable objects.
+After that a list of stopwords that exist in the given text is returned. In order to improve the performance of the following creation of the inverted index, duplicate word stems are grouped using the `collections.Counter` datatype which can be used for counting hashable objects. 
 
-### Data Model
+### Reference Processing
 
-#### Inverted Index
+TODO
+
+TODO
+
+TODO
+
+TODO
+
+## Inverted Index and Document Index Construction
+
+The inverted index and document index data models are the basis for the ad-hoc information retrieval system. 
+
+TODO
+
+TODO
+
+TODO
+
+The creation of the inverted index and document index data model is performed in the `document-index-construction-mongodb.ipynb` notebook using additional utility functions from `literature.py`, `preprocessing.py`, `grid.py` and `metadata.py`.
+
+The data models are created in a JavaScript Object Notation (JSON) syntax which is the default structure for the representation of documents in the MongoDB database. 
+
+### Inverted Index - Data Model
 
 For each document in the CORD-19 dataset a unique id is assigned. This id is used in order to identify the corresponding document in the document index (as described below).  
 
@@ -75,7 +96,7 @@ For each document in the CORD-19 dataset a unique id is assigned. This id is use
 }
 ```
 
-#### Document Index
+### Document Index - Data Model
 
 ```json
 {
@@ -105,7 +126,11 @@ For each document in the CORD-19 dataset a unique id is assigned. This id is use
 
 ### Model Creation
 
-In order to minimize the runtime of the document and inverted index construction the data is processed in parrallel. Therefore the CORD-19 files are divided into chunks with a default size of 128 using the `create_chunks` function and are processed in a parrallel manner using pythons `multiprocessing` library on the `process_chunk` function.
+In order to minimize the runtime of the document and inverted index construction the data is processed in parrallel. Therefore the CORD-19 files are divided into chunks with a default size of 128 using the `create_chunks` function and are processed in a parrallel manner using pythons `multiprocessing` library on the `process_chunk` function. For each parallel `process_chunk` task a new database connection to both the MongoDB and the Redis database is established. After that each filepath, document id tuple given by a data chunk is further processed in order to update the document ind inverted index. Therefore the document is loaded using the `DataLoader` implementation.
+Using this abstract document representation the document title is loaded. In order to filter out invalid and unneccesary documents the title is further analysed both on empty and non-english (`is_english` in `literature.y`) titles. In order to determine the language of the title the [pycld2](https://github.com/aboSamoor/pycld2)  python implementation of the Compact Langauge Detect 2 model is used. If one of these criteria is met the current document is discarded.
+
+After that the document index is updated based on the document title, the involved authors and institutions and the abstract. For those the preprocessing steps are applied as described in the previous sections. As a final step the inverted index is updated using the `update_inverted_index` function using the processed word stems for each document section (title, abstract, body).
+
 
 ```python
 """
@@ -125,11 +150,20 @@ def create_chunks(files, chunk_size=128)
 def process_chunk(args, update_doc_idx=True, update_inv_indx=True)
 ```
 
-In the `process_chunk` function
+
+In the `update_inverted_index` function the inverted index is updated consecutively for each word stem using an adapted algorithm which is based on the algorithm shoown in Trucia et. al. [4]. Given a list of word stems with the corresponding number of ocurrences and a docuemt section the algorithm iterates over all word stems. If the word stem is not existent in the inverted index database the word stem is added to the database using a configured instance of the inverted index data model. Hereby the doc_id field is set to the current document id and the count section is initialized based on the count of the stem in the given section. All other sections are initialized to zero.
+If the stem was already added to the database the existence of the given doc_id in the data object is checked. If the document id is not in the data object. The document id with the correspronding count section is added to the data object. Given the case that the document id does exist in the data object only the number of occurences is updated.
+
+
+<p align="center">
+  <img width=60% src="../doc/update_inverted_index.png">
+</p>
+
+
 
 #### Redis Cache
 
-The default algorithm for creating the inverted index 
+The default algorithm for creating the inverted index does scale 
 
 <p align="center">
   <img width=50% src="laufzeit-mongo.png">
@@ -142,6 +176,30 @@ The default algorithm for creating the inverted index
 Since the connection to the database is only established once for each processed chunk and is therefore performed significantly less frequently than the other operations, the runtime is not a problem here.
 
 However, the read access, which is carried out several times for each document, can be identified as a relevant bottleneck. In order to minimize the time required for a read access, an additional Redis cache is used, in which the most frequently used word stems and document IDs are managed.Through this measure the runtime of the inverted index construction can be improved significantly.
+
+The caching of entries is performed on two levels (as described in the [Model Creation]() section).
+
+
+```python
+"""
+@param word stem
+@param database object holding the connection to the redis instance
+@param (database object holding the conntection to the MongoDB instance)
+"""
+def update_cache_stem(stem, redis_cache):
+def is_stem_existent(stem, inverted_index_collection, redis_cache):
+```
+
+```python
+"""
+@param word stem
+@param document id in which the given stem is located
+@param database object holding the connection to the redis instance
+@param (database object holding the conntection to the MongoDB instance)
+"""
+def update_cache_doc_id(stem, doc_id, redis_cache):
+def is_doc_id_existent(stem, doc_id, inverted_index_collection, redis_cache):
+```
 
 
 ## Metadata Property Graph
@@ -161,3 +219,5 @@ However, the read access, which is carried out several times for each document, 
 
 [3] [Global Research Identifier Database](https://www.grid.ac/): licensed under a
  [Creative Commons Public Domain 1.0 International licence](https://creativecommons.org/publicdomain/zero/1.0/)
+
+ [4] Truică, Ciprian-Octavian & Rădulescu, Florin & Boicea, Alexandru. (2017). Building an Inverted Index at the DBMS Layer for Fast Full Text Search. Control Engineering and Applied Informatics. 19. 94-101. 
