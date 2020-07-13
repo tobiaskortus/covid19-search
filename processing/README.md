@@ -234,7 +234,7 @@ In order to find a suitable technique for both a efficient execution as well as 
 Due to the poor runtime performance of the most extraction algorithms which can be seen as unacceptable in terms of the overal runtime required in order to process a large set of documents. Since the results of the Rapid Automatic Keyword Extraction (RAKE) model seems quite acceptable compared to the other models combined with the fact that only a subset of each document used for the compuation of the most relevant keyphrases for a search term is used, this technique is selected for the keyphrase extraction task.
 
 <p align="center">
-  <img width=55% src="../doc/../covid19-search/doc/keyphrase_extraction.png">
+  <img width=55% src="../doc/keyphrase_extraction.png">
 </p>
 
 **Fig 4:** comparison of the different runtimes required by the given keyphrase extraction models in order to process a document averaged over a set of ten documents.
