@@ -10,8 +10,7 @@ The processing of the given dataset consists of two main parts. First the docume
 - perform additional data cleaning 
 -  vertical data migration from additional sources (GRID, ISO 3166-1 Codes)
 
-Hereby the preprocessing, as depicted in fig 1, takes place in three different domains. The extraction and processing of the authors and institutions, the paper content (title, abstract and body) and the references of the cited papers. The processed data from the different domains are then used in order to create the required data models (document index, inverted index, metadata property graph) that are used for the information retrieval task.
-
+Hereby the preprocessing which is used as a basis for the cration of the data models, as depicted in fig 1, takes place in three different domains which are described in more detail in the following section ([CORD-19 Preprocessing]())
 
 > Note: The processing of the references is currently not used due to the poor performance.
 
@@ -36,7 +35,7 @@ The authors which are each represented as a own object containing a first name, 
 - **join + normalize names (`__join_name`):** combines the single components of the name into a single string and shortens the first and middle names to the following form if `normalize_names` is set to true: e.g. Stephen William Hawking &rightarrow; S. W. Hawking. This normalization can be used in order to match authors from the documents reference list.
 - **plausibility check (`__is_name`):** basic check whether the given name is plausible. The given name is invalid if the length of the last name is shorter than two characers, the first name does not contain any valid character or fist name is empty or whitespace.
 
-The extracted institution can be also further processed using the `__parse_institution` function either to check the plausibility of an insitution or to expand the data by the geographical location of the institution. The matching of the institutions both for the plausibility check and the location lookup the Global Research Identifier Database [2] and a list of ISO 3166-1 Codes [3] is used (please refer to the References section for additional credits on the used datasets).
+The extracted institution can be also further processed using the `__parse_institution` function either to check the plausibility of an insitution or to expand the data by the geographical location of the institution. The matching of the institutions both for the plausibility check and the location lookup the Global Research Identifier Database [2] and a list of ISO 3166-1 Codes [3] is used. In order to improve the matching rate of the institutions a partial fuzzy string matching technique using the [fuzzyset](https://github.com/axiak/fuzzyset/) python package is used. 
 
 
 ### Document Preprocessing
@@ -56,31 +55,21 @@ After that a list of stopwords that exist in the given text is returned. In orde
 
 ### Reference Processing
 
-TODO
+>NOTE: Due to the currently inefficient state of the corresponding data model this task is only presented in this documentation (for additional information on the current mechanisms please refer to `literature.py` and `metadata-property-graph-neo4j.ipynb`). 
 
-TODO
-
-TODO
-
-TODO
 
 ## Inverted Index and Document Index Construction
 
-The inverted index and document index data models are the basis for the ad-hoc information retrieval system. 
+The ad-hoc search which is the most important component of every modern search engine and allows the user to search for a specific topic using a search term. In order to enable a fast full text search which is required for such a information retrieval system an inverted index as well as a document index is created. The creation of the inverted index and document index which is the main component of the ad-hoc information retrieval system  is performed in the `document-index-construction-mongodb.ipynb` notebook using additional utility functions from `literature.py`, `preprocessing.py`, `grid.py` and `metadata.py`.
 
-TODO
 
-TODO
+### Inverted Index and Document Index - Data Models
 
-TODO
+For the information retrieval task the establishment of a suitable data model is a crutial criteria in order to provide a memory and performance efficient solution which can be scaled in the required domain. In this task the requirements for this data model is not to the extend as it would be for a normal search engine due to the relatively small size of the dataset. Hence the focus of the data model is mainly focused on the simplicity rather than the implementation of advanced techniques such as inverted index compression or similar methods.
 
-The creation of the inverted index and document index data model is performed in the `document-index-construction-mongodb.ipynb` notebook using additional utility functions from `literature.py`, `preprocessing.py`, `grid.py` and `metadata.py`.
+As a basis for the following data model the structure shown in the pulication of Trucia et. al. is used as a starting point. In the following part the adaptions made to the data model should now be described.
 
-The data models are created in a JavaScript Object Notation (JSON) syntax which is the default structure for the representation of documents in the MongoDB database. 
-
-### Inverted Index - Data Model
-
-For each document in the CORD-19 dataset a unique id is assigned. This id is used in order to identify the corresponding document in the document index (as described below).  
+For each document in the CORD-19 dataset a unique id is assigned which is then used in both mentioned data models in order to identify the corresponding document. In the document index the document index is further extended by the most important document information, namely the document title, the document abstract, as well as a list of associated authors and the institution they are attending, which is shown in the search engine user interface as a description for each document given a search result.
 
 ```json
 {
@@ -96,7 +85,7 @@ For each document in the CORD-19 dataset a unique id is assigned. This id is use
 }
 ```
 
-### Document Index - Data Model
+In order to provide a fast full text search for the documents a inverted index datastructure is created. In this a entry is created for each word or more precisely the corresponding word stem existent in at least one document. For this word stam a list of document ids which contain the given stem is consecutively updated. In addition to the document id a additional object which holds the number of occurrences which is later used for the document ranking.
 
 ```json
 {
@@ -159,7 +148,7 @@ If the stem was already added to the database the existence of the given doc_id 
   <img width=60% src="../doc/update_inverted_index.png">
 </p>
 
-**Fig 2:**
+**Fig 2:** Algorithm used in order to update the inverted index model given the three different states the database model can be situated in.
 
 #### Redis Cache
 
@@ -229,9 +218,9 @@ The data which is required for the keyphrase index which is also stored in the M
 
 ### Selection of the Keyphrase Extraction Model
 
-In order to find a suitable technique for both a efficient execution as well as a high quality result different graph based keyphrase extraction techniques were examined. Therefore the mean execution time needed in order to process a document is measured. (The required sourcecode and results are documented in `keyphrase-extraction-tests.ipynb`)
+In order to find a suitable technique for both a efficient execution as well as a high quality of keyphrases different graph based keyphrase extraction techniques using the implementations from the [python keyphrase extraction (pke)](https://github.com/boudinfl/pke) and [python-rake](https://github.com/fabianvf/python-rake) modules were examined. Therefore the mean execution time needed in order to process a document was measured. (The required sourcecode and results are documented in `keyphrase-extraction-tests.ipynb`)
 
-Due to the poor runtime performance of the most extraction algorithms which can be seen as unacceptable in terms of the overal runtime required in order to process a large set of documents. Since the results of the Rapid Automatic Keyword Extraction (RAKE) model seems quite acceptable compared to the other models combined with the fact that only a subset of each document used for the compuation of the most relevant keyphrases for a search term is used, this technique is selected for the keyphrase extraction task.
+Due to the poor runtime performance of the most extraction algorithms which can be seen as unacceptable in terms of the overal runtime required in order to process a large set of documents. Since the results of the Rapid Automatic Keyword Extraction (RAKE) model seems quite acceptable compared to the other models combined with the fact that only a subset of each document is used for the compuation of the most relevant keyphrases for a search term, this technique is selected for the keyphrase extraction task.
 
 <p align="center">
   <img width=55% src="../doc/keyphrase_extraction.png">
@@ -242,12 +231,12 @@ Due to the poor runtime performance of the most extraction algorithms which can 
 
 ### Model Creation
 
+The creation of the metadata property graph is performed in parralel as described previously for the document- and inverted index using an modified `process_chunk` function. In this case the internal processing steps used in order to process a document are reduced to a minimal scope. For each document in a chunk the content of the different text sections (title, abstract and body) are concatinated and then processed by the RAKE model. The first ten keyphrases with the highest score (or less depending on the number of extracted phrases) are saved in the MongoDB database.
+
+
 ## Metadata Property Graph
 
 For the advanced information retrieval based on the document metadata a graph database is used containing a set of basic metadata. The processing of the documents in order to create the mentioned graph database is located in the `metadata-property-graph-neo4j.ipynb` notebook. This notebook is based on a similar structure as the script used for the inverted- and document index construction and therefor uses the same utility functions located in `literature.py`.
-
-
-### Medata Processing
 
 ### Metadata Property Graph - Data Model
 
@@ -273,6 +262,6 @@ The creation of the metadata property graph is performed in parralel as describe
 [2] [ISO 3166-1 List](https://datahub.io/core/country-list): licensed under a  [Open Data Commons Public Domain Dedication and License v1.0](https://opendatacommons.org/licenses/pddl/index.html)
 
 [3] [Global Research Identifier Database](https://www.grid.ac/): licensed under a
- [Creative Commons Public Domain 1.0 International Licence](https://creativecommons.org/publicdomain/zero/1.0/)
+[Creative Commons Public Domain 1.0 International Licence](https://creativecommons.org/publicdomain/zero/1.0/)
 
- [4] Truică, Ciprian-Octavian & Rădulescu, Florin & Boicea, Alexandru. (2017). Building an Inverted Index at the DBMS Layer for Fast Full Text Search. Control Engineering and Applied Informatics. 19. 94-101. 
+[4] Truică, Ciprian-Octavian & Rădulescu, Florin & Boicea, Alexandru. (2017). Building an Inverted Index at the DBMS Layer for Fast Full Text Search. Control Engineering and Applied Informatics. 19. 94-101. 
