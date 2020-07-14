@@ -1,6 +1,9 @@
 # Covid Open Research Engine
 
-
+[![Generic badge](https://img.shields.io/badge/Made_with-Python-GREEN.svg)](https://shields.io/)
+[![Generic badge](https://img.shields.io/badge/Made_with-Node.js-GREEN.svg)](https://shields.io/)
+[![Generic badge](https://img.shields.io/badge/Made_with-React.js-GREEN.svg)](https://shields.io/)
+[![Generic badge](https://img.shields.io/badge/Stable-No_release-BLUE.svg)](https://shields.io/)
 <p align="center">
   <img src="doc/search.gif">
 </p>
@@ -107,7 +110,6 @@ dataset
 - Development of an document and database level knowledge graph in order to provide short answers to user given search queries
 - Development of a web crawler in order to search for new literature in the area of COVID-19 or new topics
 - ...
-
 
 ## References:
 
