@@ -1,4 +1,4 @@
-# Covid Open Research Engine
+![img](doc/header.png)
 
 [![Generic badge](https://img.shields.io/badge/Made_with-Python-GREEN.svg)](https://shields.io/)
 [![Generic badge](https://img.shields.io/badge/Made_with-Node.js-GREEN.svg)](https://shields.io/)
@@ -119,3 +119,4 @@ dataset
 
 [3] Lu Wang L, Lo K, Chandrasekhar Y, et al. CORD-19: The Covid-19 Open Research Dataset. Preprint. ArXiv. 2020;arXiv:2004.10706v2. Published 2020 Apr 22. 
 
+Icon Made by [Freepik](https://www.flaticon.com/free-icon/virus_2659980?term=virus&page=1&position=1) from [flaticon.com](https://www.flaticon.com/)
