@@ -211,7 +211,6 @@ class App extends Component {
                                     <Col md="4">
                                         <Metadata 
                                             document={this.state.selectedDocument}
-                                            onLinkClicked={() => {console.log('load document')}}
                                             onStatisticsClicked={this.fetchStatistics.bind(this)}
                                             onElementClicked={this.selectFilter.bind(this)}
                                             />

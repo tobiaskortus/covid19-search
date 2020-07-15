@@ -5,8 +5,16 @@ import PersonIcon from '@material-ui/icons/Person';
 import ApartmentIcon from '@material-ui/icons/Apartment';
 import { Link } from '@material-ui/core';
 
-
 export class Metadata extends Component {
+
+    onLinkClicked(url) {
+        if(url !== 'undefined' && url !== 'nan') {
+            window.open(url, "_blank");
+        } else {
+            alert('The url to current document is not available !')
+        }
+    }
+
     render() {
         return (
             <div>
@@ -14,7 +22,7 @@ export class Metadata extends Component {
                     <ListGroup.Item>
                         <h7>{this.props.document.title}</h7> 
                         <br></br>
-                        <PictureAsPdfIcon onClick={this.props.onLinkClicked}/> 
+                        <PictureAsPdfIcon onClick={() => {this.onLinkClicked(this.props.document.url)}}/> 
                         <PersonIcon onClick={() => {
                             console.log('authors')
                             this.props.onStatisticsClicked(this.props.document.authors, 'authors')

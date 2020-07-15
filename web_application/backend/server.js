@@ -607,7 +607,8 @@ app.get('/document', (req, res) => {
             'doc_id': document[0]._id,
             'title': document[0].document_title,
             'abstract': document[0].abstract,
-            'authors': document[0].authors
+            'authors': document[0].authors,
+            'url': document[0].url
         };
         res.status(200).send(merged);
     });
