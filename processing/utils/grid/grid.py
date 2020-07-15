@@ -14,9 +14,6 @@ except ImportError:
 
 
 class CountryCodeLookup:
-    """
-    TODO: Add fuzzy matching
-    """
     GRID_DIR = dirname(realpath(__file__))
     GRID_DATA_ROOT = join(GRID_DIR, 'data')
     COUNTRY_CODES_URL = 'https://datahub.io/core/country-list/r/data.csv'
