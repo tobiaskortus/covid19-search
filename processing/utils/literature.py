@@ -30,7 +30,7 @@ class DataLoader:
 
     #TODO: Improve is name check
     def __is_name(self, first_name, middle_name, last_name):
-        return not len(last_name) < 2 or first_name.isalpha() or first_name is ' '
+        return not len(last_name) < 2 or first_name.isalpha() or first_name is ' ' or first_name is ''
 
     def __clean_name_part(self, x):
         """
@@ -97,7 +97,8 @@ class DataLoader:
                 normalize_names=normalize_names,
                 plausibility_check=plausibility_check)
             
-            authors.append((author, institution))
+            if author is not None and author is not '' and author is not ' ' and isinstance(author, str):
+                authors.append((author, institution))
 
         return authors
 
@@ -160,6 +161,11 @@ def get_files(root_dir):
     files = []
     [files.extend(glob(join(path, '*.json'))) for path in json_paths]
     return files
+
+
+def get_paper_id(fpath, dl=None):
+    if dl is None: dl = DataLoader(fpath)
+    return dl.get_paper_id()
 
 def get_full_text(fpath, dl=None):
     if dl is None: dl = DataLoader(fpath)

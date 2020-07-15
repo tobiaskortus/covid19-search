@@ -43,6 +43,11 @@ class CORDMetadata:
         if result is None: return None
         return None if result['journal'] is None else str(result['journal'])
 
+    def get_document_url(self, sha):
+        result = self.metadata.get(sha)
+        if result is None: return 'undefined'
+        return 'undefined' if result['url'] is None else str(result['url'])
+
     def get_authors(self, sha):
         raise NotImplementedError()
 
