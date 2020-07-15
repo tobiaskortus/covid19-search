@@ -114,7 +114,6 @@ class App extends Component {
         fetch(`/statistics?type=${encodeURIComponent(type)}&params=${encodeURIComponent(unique_params)}`)
         .then(res => res.json())
         .then(json => {
-            console.log(json);
             this.setState({metadata: json});
         })
     }

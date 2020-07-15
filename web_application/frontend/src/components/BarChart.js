@@ -15,7 +15,9 @@ class BarChart extends Component {
   componentDidUpdate(previous) {
     if(previous.data !==this.props.data) {
       this.initializeChart(this.props.data.metadata);
-      this.chart.validateData();
+      if (this.chart !== undefined) {
+        this.chart.validateData();
+      }
     }
   }
 
