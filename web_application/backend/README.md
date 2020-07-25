@@ -1,7 +1,6 @@
 # Backend Server
 
-The backend server is one of the main components of the search engine and functions as the information retrieval system. The backend is designed using the Node.js javascript runtime. 
-Over the default packages the following packages for addressing the different kind of databases as well as for basic natural language processing tasks.
+The backend server is one of the main components of the search engine and functions as the information retrieval system. The backend is designed using the Node.js javascript runtime. Over the default packages the following packages for addressing the different kind of databases as well as for basic natural language processing tasks.
 
 - natural https://github.com/NaturalNode/natural
 - MongoDB Node.JS Driver https://mongodb.github.io/node-mongodb-native/
@@ -12,7 +11,7 @@ Over the default packages the following packages for addressing the different ki
 
 ## API-endpoints
 
-The API of the backend can be devided into two enpoints used for the ad-hoc search and for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). A detailed view over the fuctionality of the backend is described afterwards.
+The API of the backend can be devided into two enpoints each used for the ad-hoc search and for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). A detailed view over the fuctionality of the backend is described afterwards.
 
 <p align="center">
   <img width=40% src="../../doc/web_server_backedn_api_endpoints.png">
@@ -65,7 +64,7 @@ app.get('/document', (req, res) => {...}
 
 #### Geographical statistic
 
-**Description:** returns a statistic of the geographical location of institutions involved in a set of given papers (defined by search term).
+**Description:** returns a statistic of the geographical locations of institutions involved in a set of given papers (defined by the search term).
 
 ```javascript
 app.get('/geo', (req, res) => {...}
@@ -83,7 +82,7 @@ app.get('/geo', (req, res) => {...}
 
 #### Author/ Institution Statistic
 
-**Description:** returns a statistic of a specific author or institution containing currently the number of documents published.
+**Description:** returns a statistic for the authors or institutions involved in a selected paper which contains in the current state the number of documents published.
 
 ```javascript
 app.get(`/statistics`, (req, res) => {...}
@@ -100,7 +99,7 @@ app.get(`/statistics`, (req, res) => {...}
 
 ### Preprocessing of the given search query
 
-The first task in the ad-hoc information retireval pricess is the preprocessing of the search query given by the arguments of the  http request which is performed in the`getQeryFromTerm` function. In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following three steps are hereby performed:
+The first task in the ad-hoc information retireval process is the preprocessing of the search query given by the arguments of the  http request which is performed in the`getQeryFromTerm` function. In order to transform a given query, which can be either present in keywords or a free text, for the usage in the information retrieval system of the backend server the following three steps are hereby performed:
 
 - **splitting:** The given search query is split by whitespaces into a list of individual strings. 
 - **stemming:** A word stem is formed for each of the words from the split set using the [natural](https://github.com/NaturalNode/natural) package.
@@ -116,7 +115,7 @@ getQeryFromTerm = (searchTerm) => {...}
 
 ### Data retrieval from database
 
-The previously constructed query is then utilized in the `getDocumentIdsFromMongodb` function in order to return a list of document objects containing the document ids, and further additional information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. 
+The previously constructed query is then utilized in the `getDocumentIdsFromMongodb` function in order to return a list of document objects containing a nested list of matched document ids, and further information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. 
 
 
 ```javascript
@@ -128,7 +127,7 @@ The previously constructed query is then utilized in the `getDocumentIdsFromMong
 getDocumentIdsFromMongodb = (query, dbo) => {...}
 ```
 
-These results are then consecutively ranked, as described below, by their relevance regarding to the given search query and the lists are then intersected in order to return those documents that match all elements of the query. In a final step a subset of documents based on on the specified page and number of documents per pages, as defined in the request arguments, are loaded from the database using the `getDocumentsFromMongodb` function. 
+These results are then consecutively rankedby their relevance regarding to the given search query, as described below, followed by an intersection of the given lists in order to return those documents that match all elements of the query. In a final step a subset of documents based on on the specified page and number of documents per pages, as defined in the request arguments, are loaded from the database using the `getDocumentsFromMongodb` function. 
 
 ```javascript
 /**
@@ -138,7 +137,7 @@ These results are then consecutively ranked, as described below, by their releva
 getDocumentsFromMongodb = (doc_ids) => {...}
 ```
 
-As a second result of the ad-hoc search request a set of keyphrases that are relevant in the context of the given search term are processed. The query operation for the keyphrases is performed using the ten most relevant documents as determinded by the ranking using the `getKeyphrasesFromMongodb` function. The results containing the selected documents as well as the determined keyphrases are concatinated into a single object and returned in the http response.
+As a second result of the ad-hoc search request a set of keyphrases that are relevant in the context of the given search term are processed. The query operation for the keyphrases is performed using the ten most relevant documents as determinded by the previously performed ranking using the `getKeyphrasesFromMongodb` function. The results containing the selected documents as well as the determined keyphrases are then concatinated into a single object and returned with the http response.
 
 ```javascript
 /**
@@ -149,7 +148,7 @@ As a second result of the ad-hoc search request a set of keyphrases that are rel
 getKeyphrasesFromMongodb = (query, dbo) => {...}
 ```
 
-In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in-memory cache is implemented using a redis database. Hereby the processed result of a search query is stored in the redis cache using the `addDataToCache` function in order to seed up future requests which can be fetched using the `getDataFromCache` function. 
+In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in-memory cache is implemented using a redis database. Hereby the processed result of a search query is stored in the redis cache using the `addDataToCache` function in order to seed up future requests which can be utilized using the `getDataFromCache` function. 
 
 
 ```javascript
@@ -171,7 +170,7 @@ getDataFromCache = (query, client) => {...}
 addDataToCache = (query, doc_ids, keyphrases, client) => {...}
 ```
 
- Per default 2GB are assigned to the redis database which is in most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. Nevertheless, to avoid the database from crashing if the elements cached in the database should exceed the assigned memory, the maxmemory configuration of the database is set to a least recent out strategy. 
+ As a default 2GB are assigned to the redis database which is in most cases enough storage to cache all search results performed by the user given the size if the mongodb database and the expected amount of requests performed on such a local search engine. Nevertheless, to avoid the database from crashing if the elements cached in the database should exceed the assigned memory, the maxmemory configuration of the database is set to a least recent out strategy. 
 
 </br>
 
@@ -179,12 +178,12 @@ addDataToCache = (query, doc_ids, keyphrases, client) => {...}
   <img width=60% src="../../doc/redis_caching_backend.png">
 </p>
 
-**Fig 2:** Processing pipeline for ad-hoc search using the MongoDB data model, the processing logic and an intermediate redis cache in order to improve responsiveness and speed expecially when consecutively loading different pages for the same search query.
+**Fig 2:** Processing pipeline for ad-hoc search using the MongoDB data model, the processing logic and an intermediate redis cache in order to improve responsiveness and speed expecially when loading different pages for the same search query.
 
 
 #### Document Intersection
 
-The retrieved lists of document ids, as described in the previous section, containing the matched document ids for one of the word stems that are presented in the search query still require some additional processing in order to return only the document ids that match all word stems. Therefor a list intersection is performed, as displayed in Fig 2, in order to find the mentioned subset of documents.
+The initial retrieved lists of document ids that was queried based on the word stems contained by the search term still requires some additional processing in order to return desired documents that match all given word stems. Therefore a list intersection is performed as a part of the boolean retrieval model in order to find the mentioned subset of documents as displayed in Fig 2.
 
 <p align="center">
   <img width=25% src="../../doc/intersect.png">
@@ -194,9 +193,9 @@ The retrieved lists of document ids, as described in the previous section, conta
 
 </br>
 
-With regards to the memory and runtime requirements it is recommended to perform these operations on the database level instead of the application level. Nevertheless in this project the mentioned operations were moved to the application layer in order to make adjustments regarding to the document ranking and implementation of different IR algorithms as dynamic as possible. Due to the small size of the data set, no significant restrictions in speed and memory consumtion are expected.
+With regards to the memory and runtime requirements it is recommended to perform these operations on the database level instead of the application level. Nevertheless in this project the mentioned operations were moved to the application layer in order to make adjustments in respect to the document ranking and implementation of different IR algorithms as dynamic as possible. Due to the small size of the data set, no significant restrictions in speed and memory consumtion are expected.
 
-The intersection of the search results is performed based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm, where <img src="https://render.githubusercontent.com/render/math?math=n">  corresponds to the number of lists containing the ranked documents thath were loaded from the database as described before <cite>[1]</cite>. This operation is performed in the function `intersect` which uses the the actual implementation of the 2-way-merge algorihm that is located in the `mergeIntersect` method.
+The final intersection of the search results is performed based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm [1], where <img src="https://render.githubusercontent.com/render/math?math=n">  corresponds to the number of lists containing the ranked documents that were loaded from the database as described before. This operation is performed in the function `intersect` which uses an implementation of the 2-way-merge algorihm that is located in the `mergeIntersect` method.
 
 
 ```javascript
@@ -218,7 +217,8 @@ mergeIntersect = (L1, L2) => {...}
 
 
 #### Document ranking
-In order to determine a ranking of the importance of the documents based on a given query, a document ranking is performed by the backend using the function `ranking`.
+
+In order to determine a ranking of the importance of the documents based on a given query, as described in the previous sections, a document ranking is performed by the backend using the function `ranking`.
 
 ```javascript
 /**
@@ -229,7 +229,7 @@ ranking = (data) => {...}
 ```
 
 
-For the ranking process a modified version of the weighted zone scoring [2] is used. In the basic version of the mentioned scoring system the rank of the document is determined solely by the occurence of the word in a specific zone (e.g. title, abstract, body) of the document <img src="https://render.githubusercontent.com/render/math?math=s_{i} = [0, 1]">  weighted by a set of weights <img src="https://render.githubusercontent.com/render/math?math=g_{i} \in [0, 1]"> with <img src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l}g_{i} = 1">.
+For the ranking process a modified version of the weighted zone scoring [2] is used. In the basic version of the mentioned scoring system the rank of the document is determined solely by the occurence of the word in a specific zone (e.g. title, abstract, body) of the document <img src="https://render.githubusercontent.com/render/math?math=s_{i} = [0, 1]">  prioritized by a set of weights <img src="https://render.githubusercontent.com/render/math?math=g_{i} \in [0, 1]"> with <img src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l}g_{i} = 1">.
 
 <p align="center">
   <img width=10% src="https://render.githubusercontent.com/render/math?math=\sum_{i=1}^{l} g_{i}s_{i}">
@@ -237,7 +237,7 @@ For the ranking process a modified version of the weighted zone scoring [2] is u
 
 In order to reward documents with a high occurence of the word the scoring function is modified by a nomalized word count factor, where  <img src="https://render.githubusercontent.com/render/math?math=s_{i}"> is defined by the fraction of the number of occurences of the term in the current document devided by the highest occurence of the term in any document.
 
-These normalized occurence factors are calculated using the `getNormalizationFactors` and 
+These normalized occurence factors are calculated in the backend application using the `getNormalizationFactors` and 
 `getRankScore` function.
 
 ```javascript
@@ -257,7 +257,8 @@ getRankScore(count_obj, norm_factors) => {...}
 ```
 
 #### Country, Institution and Author Filters 
-In order to enclose the search further, the search engine enables the user to filter the documents for additional specific properties. Currently those support filtering for specific locations, authors and institutions. The filtering process is directly integrated into the ad-hoc retrieval and is performed after the query of the matching document ids. In a first step the filters, which are transmitted by the frontend as a http request parameter, are grouped based on their category (country, author, institution) using the `groupFilters` method.
+
+In order to enclose the search further, the search engine enables the user to filter the documents for additional specific properties. Currently those support filtering for specific locations, authors and institutions. The filtering process is directly integrated into the ad-hoc retrieval and is performed after the query of the matching document ids. In a first step the filters objects which are described in detail in the [frontend documentation](../frontend/README.md), transmitted by the frontend as a http request parameter, are grouped based on their category (country, author, institution) using the `groupFilters` method.
 
 ```javascript
 /**
@@ -293,14 +294,14 @@ filterByInstitution = (doc_ids, institutions) => {...}
 
 ## Information retrieval - metadata
 
-The following sections describes the basic functionality of the metadata analysis for information retrieval in order to gain additional insights (on top of the ad-hoc) on the research topic.
-The current state of the matadata analysis can be devided into two main topics which are designed to provide additional information each on the geographical statistics of the publications for a given ad-hoc search request and on the overall statistics of the dataset regardin to the publications of different authors and institutions.
+The following sections describes the basic functionality of the metadata analysis as a second information retrieval model in order to gain additional insights (on top of the ad-hoc search) on the research topic.
+The current state of the matadata analysis can be devided into two main topics which are designed to provide additional information each on the geographical statistics of the publications for a given ad-hoc search request and on the overall statistics of the dataset regarding to the publications of different authors and institutions.
 
 ### Geographical Statistics
 
-In order to retrieve the statistic of the geographical location of institutions involved in a set of given papers, defined by a previous ad-hoc search request. The initial preprocessing is in its structure in most parts is similar to the previously described ad-hoc search. Basis of the whole process is the search term that is given by the request parameter (as described in the section [Data retrieval from database]()). In most cases the intersected document ids are loaded from the cache. If the data is not represented in the cache the data is loaded in a similar manner as described in the previously mentioned section. The main difference is that the document ranking is skipped due to the performance impact of the ranking process, which has no impact on the following retrieval of the geographical statistics.
+In order to retrieve the statistic of the geographical location of the institutions involved in a set of given papers, defined by a previous ad-hoc search request a query is performed on the metadata property graph which is described in detail in the [data model documentation](../../processing/README.md). The initial preprocessing for the database request is in its structure in most parts similar to the previously described ad-hoc search. Basis of the whole process is the search term that is given by the request parameter which is taken into account to fetch the relevant documents from the database. In most cases the intersected document ids are therefore loaded from the cache. If the data is not represented in the cache the data is loaded in a similar manner as described in the previously mentioned section. In this case the document ranking is skipped due to the performance impact of the ranking process, which has no value for the following retrieval of the geographical statistics.
 
-The processed document ids are then taken into account in order to get the statistics of geographical location of institutions using the `getCountries` function that performs a search query on the Neo4j metadata property graph which is described in detail in the documentation  [document processing + construction of data models (CORD-19)]().
+The processed document ids are then taken into account in order to get the statistics of geographical location of institutions using the `getCountries` function that performs a search query on the Neo4j metadata property graph which is described in detail in the documentation  [document processing + construction of data models (CORD-19)](../../processing/README.md).
 
 ```javascript
 /**
@@ -314,7 +315,7 @@ getCountries = (doc_ids) => {...}
 
 ### Author/ Institution Statistics
 
-In order to get some additional information about the relevance of specific authors and institutions in the field of COVID-19 the metadata graph database can be queried for additional statistics (currently limited to the number of publications) The type of statistic that should be fetched from the database is defined by the `type` property in the http request. Based on this property the corresponding function, either `getAuthorsStatistics` or `getInstitutionStatistics`, is called. In those functions the required data is loaded from the Neo4j graph database and afterwards returned to the frontend via the http response.
+In order to get some additional information about the relevance of specific authors and institutions in the field of COVID-19 the metadata graph database can be queried for additional statistics (currently limited to the number of publications). The type of statistic that should be fetched from the database is defined by the `type` property in the http request. Based on this property the corresponding function, either `getAuthorsStatistics` or `getInstitutionStatistics`, is called. In those functions the required data is loaded from the Neo4j graph database and afterwards returned to the frontend via the http response.
 
 ```javascript
 /**
