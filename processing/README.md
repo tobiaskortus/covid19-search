@@ -1,16 +1,16 @@
 # Document Processing + Construction of the Data Models
 
-The following sections of this document describe the preprocessing and processing of the CORD-19 dataset in order to provide a suitable set of data models for the information retrieval tasks used in the search engine. The `/processing` directory includes all relevant scripts used for the processing of the CORD-19 dataset as described in the following sections. Before running those scrits the [required prerequesites](../README.md) should be installed and configured.
+The following sections of this document describe the preprocessing and processing of the CORD-19 dataset in order to provide a suitable set of data models for the information retrieval tasks used in the search engine. The `/processing` directory includes hereby all relevant scripts used for the processing of the CORD-19 dataset as described in the following sections. Before running those scripts the [required prerequesites](../README.md) containing the databases and the CORD-19 dataset should be installed and configured.
 
 ## Overview
 
-The processing of the given dataset consists of two main parts. First the documents of the CORD-19 dataset which are given in a json format are preprocessed using the following steps:
+In order to create the required data models out of the CORD-19 dataset the following steps are performed. First the documents of the CORD-19 dataset which are given in a json format are preprocessed using the following tasks:
 
 - extract the relevant information from the file
 - perform additional data cleaning 
--  vertical data migration from additional sources (GRID, ISO 3166-1 Codes)
+- vertical data integration from additional sources
 
-Hereby the preprocessing which is used as a basis for the cration of the data models, as depicted in fig 1, takes place in three different domains which are described in more detail in the following section ([CORD-19 Preprocessing]())
+Hereby the preprocessing which is used as a basis for the cration of the data models, as depicted in fig 1, takes place in the three different document areas (author, institutions, document and references) which are described in more detail in the following section ([CORD-19 Preprocessing]())
 
 > Note: The processing of the references is currently not used due to the poor performance.
 
@@ -22,28 +22,34 @@ Hereby the preprocessing which is used as a basis for the cration of the data mo
 
 **Fig 1:** Schematic visualization of the processing steps performed as well as the usage of additional datasources in order to create the data models.
 
+Due to the limited amount of information represented in each document which can be insufficient for the planned information retrieval tasks , expecially for more advanced metadata analysis such as the identification of the geographical locations involved in a paper, a vertical data integration is performed using the Global Research Identifier Dataset (GRID), the ISO 3166-1 country codes which are required for the visualization of the results in the frontend appliocation using the library amCharts and the CORD-19 metadata csv which contains some additional information on the data, such as urls.
+
+In a second step the preprocessed information is used in order to build the tree required data models containing a inverted index and document index and an metadata property graph.
+
 </br>
 
 ## CORD-19 Preprocessing
 
 ### Authors/ Insitutions Processing
-The raw information on the involved authors and institutions are extracted from the json file using the functionality implemented in the `DataLoader` class in `literature.py`. The raw information is further processed by multiple tasks which can be selected based on the desired data policy (keep all data, remove invalid data).
+The raw information on the involved authors and institutions are extracted from the json file using the functionality implemented in the `DataLoader` class in `literature.py`. The raw information is then further processed, as described in the following section, using multiple steps which can be selected based on the desired data policy (keep all data, remove invalid data).
 
-The authors which are each represented as a own object containing a first name, a list of middle names (can be empty) and a last name. For the processing of the authors, which is performed in the `__parse_author` function, the following steps can be enabled:
+The authors which are each represented as a own object containing a first name, a list of middle names (can be empty) and a last name are often in a bad shape and require some additional processing in order to remove invalid characters or remove faulty data instances. For the processing of the authors, which is performed in the `__parse_author` function, the following steps can be enabled:
 
-- **clean names (`__clean_name_part`):** removes all characters that are not valid in names (ISO basic Latin alphabet and '-' character)
+- **clean names (`__clean_name_part`):** removes all characters that are not valid in names (valid are hereby all ISO basic Latin alphabet and '-' characters)
 - **join + normalize names (`__join_name`):** combines the single components of the name into a single string and shortens the first and middle names to the following form if `normalize_names` is set to true: e.g. Stephen William Hawking &rightarrow; S. W. Hawking. This normalization can be used in order to match authors from the documents reference list.
-- **plausibility check (`__is_name`):** basic check whether the given name is plausible. The given name is invalid if the length of the last name is shorter than two characers, the first name does not contain any valid character or fist name is empty or whitespace.
+- **plausibility check (`__is_name`):** basic check whether the given name is plausible. The given name is invalid if the length of the last name is shorter than two characers, the first name does not contain any valid character or the fist name is empty or contains only whitespaces.
 
-The extracted institution can be also further processed using the `__parse_institution` function either to check the plausibility of an insitution or to expand the data by the geographical location of the institution. The matching of the institutions both for the plausibility check and the location lookup the Global Research Identifier Database [2] and a list of ISO 3166-1 Codes [3] is used. In order to improve the matching rate of the institutions a partial fuzzy string matching technique using the [fuzzyset](https://github.com/axiak/fuzzyset/) python package is used. 
+The extracted institution can be also processed further using the `__parse_institution` function either to check the plausibility of an insitution or to expand the data by the geographical location of the institution. For the matching of the institutions both for the plausibility check and the location lookup the Global Research Identifier Database [2] and a list of ISO 3166-1 Codes [3] are used. In order to improve the matching rate of the institutions a partial fuzzy string matching technique using the [fuzzyset](https://github.com/axiak/fuzzyset/) python package is used. 
 
 
 ### Document Preprocessing
 
-In order to provide a sufficient data model for the boolean information retrieval model several preprocessing steps are performend in order to minimize the required space and optimize the rate of matched documents by improving the quality of the queryable phrases.
-Therefore a number of various steps are performed on each section of the document (title, abstract body). The sections are each extracted from the json document using the functionality implemented in the `DataLoader` class in `literature.py`. The following preprocessing tasks were implemented as a pipeline (`preprocessing.py`) where the class `NLPPipeline` is used as a base processing block. For this block, additional modules that define an arbitrary type of processing step for the abstract `transform` function of the base class `NLPTrasformer`, can be registered.
+In order to provide a sufficient data model for the boolean information retrieval model several preprocessing steps are performend on the document text in order to minimize the required space and optimize the rate of matched documents by improving the quality of the queryable phrases.
+Therefore a number of various steps are performed on each section of the document (title, abstract body). The sections are therefore extracted from the json document using the `get_section` function implemented in the `lierature.py`. 
 
-- Transforming all characters to lowercase: `ToLowercase`
+The following preprocessing tasks is implemented as a pipeline (`preprocessing.py`) where the class `NLPPipeline` is used as a base processing container. For this container, additional modules that define an arbitrary type of processing step for the abstract `transform` function of the base class `NLPTrasformer`, can be registered. The following transformer blocks were implemented for processing the CORD-19 documents:
+
+- Changing all characters to lowercase: `ToLowercase`
 - Removing citations `CitationRemover`
 - Remove all content in brackets `ContentInBracketsRemover`
 - Tokenization `Tokenizer`
@@ -51,25 +57,25 @@ Therefore a number of various steps are performed on each section of the documen
 - Removal of symbols and single characters `SymbolRemover`, `NonAlphanumericRemover`
 - Stemming `Stemmer`
 
-After that a list of stopwords that exist in the given text is returned. In order to improve the performance of the following creation of the inverted index, duplicate word stems are grouped using the `collections.Counter` datatype which can be used for counting hashable objects. 
+After that a list of word stems that exist in the given text is returned. In order to improve the performance of the creation of the inverted index, duplicate word stems are grouped using the `collections.Counter` datatype which can be used for counting hashable objects. 
 
 ### Reference Processing
 
->NOTE: Due to the currently inefficient state of the corresponding data model this task is only presented in this documentation (for additional information on the current mechanisms please refer to `literature.py` and `metadata-property-graph-neo4j.ipynb`). 
+>NOTE: Due to the currently inefficient state of the corresponding data model this task not described in this documentation (for additional information on the current mechanisms please refer to `metadata-property-graph-neo4j.ipynb` and `literature.py`). 
 
 
 ## Inverted Index and Document Index Construction
 
-The ad-hoc search which is the most important component of every modern search engine and allows the user to search for a specific topic using a search term. In order to enable a fast full text search which is required for such a information retrieval system an inverted index as well as a document index is created. The creation of the inverted index and document index which is the main component of the ad-hoc information retrieval system  is performed in the `document-index-construction-mongodb.ipynb` notebook using additional utility functions from `literature.py`, `preprocessing.py`, `grid.py` and `metadata.py`.
+In order to enable a fast full text search which is required for such a information retrieval system an inverted index as well as a document index are created. The creation of those data models is performed in the `document-index-construction-mongodb.ipynb` notebook using additional utility functions from `literature.py`, `preprocessing.py`, `grid.py` and `metadata.py`.
 
 
 ### Inverted Index and Document Index - Data Models
 
-For the information retrieval task the establishment of a suitable data model is a crutial criteria in order to provide a memory and performance efficient solution which can be scaled in the required domain. In this task the requirements for this data model is not to the extend as it would be for a normal search engine due to the relatively small size of the dataset. Hence the focus of the data model is mainly focused on the simplicity rather than the implementation of advanced techniques such as inverted index compression or similar methods.
+For the information retrieval task the establishment of a suitable data model is a crutial criteria in order to provide a memory and performance efficient solution which can be scaled in the required domain. In this task the requirements for the data model are not to the extend as it would be for a normal search engine due to the relatively small size of the dataset. Hence the focus of the data model is mainly focused on the simplicity rather than the implementation of advanced techniques such as inverted index compression or similar methods.
 
-As a basis for the following data model the structure shown in the pulication of Trucia et. al. is used as a starting point. In the following part the adaptions made to the data model should now be described.
+As a basis for the following data model the structure proposed in the pulication by Trucia et. al. is used as a starting point.
 
-For each document in the CORD-19 dataset a unique id is assigned which is then used in both mentioned data models in order to identify the corresponding document. In the document index the document index is further extended by the most important document information, namely the document title, the document abstract, as well as a list of associated authors and the institution they are attending, which is shown in the search engine user interface as a description for each document given a search result.
+For each document in the CORD-19 dataset a unique id is assigned which is then used in both mentioned data models in order to identify the corresponding document. In the document index the document id is further extended by the most important document information, namely the document title, the document abstract, as well as a list of associated authors and the institution they are attending.
 
 ```json
 {
@@ -85,7 +91,7 @@ For each document in the CORD-19 dataset a unique id is assigned which is then u
 }
 ```
 
-In order to provide a fast full text search for the documents a inverted index datastructure is created. In this a entry is created for each word or more precisely the corresponding word stem existent in at least one document. For this word stam a list of document ids which contain the given stem is consecutively updated. In addition to the document id a additional object which holds the number of occurrences which is later used for the document ranking.
+In order to provide a fast full text search for the documents a inverted index datastructure is created by adding an entry for each word or more precisely the corresponding word stem existent in at least one document. For this word stam a list of document ids which contain the given stem is consecutively updated. In addition to the document id a additional object which holds the number of occurrences of the word stem which is later used for the document ranking is created.
 
 ```json
 {
@@ -115,10 +121,13 @@ In order to provide a fast full text search for the documents a inverted index d
 
 ### Model Creation
 
-In order to minimize the runtime of the document and inverted index construction the data is processed in parrallel. Therefore the CORD-19 JSON files (file paths) are divided into chunks with a default size of 128 using the `create_chunks` function and are processed in a parrallel manner using pythons `multiprocessing` library on the `process_chunk` function. For each parallel `process_chunk` task a new database connection to both the MongoDB is established. After that each filepath, document id tuple given by a data chunk is further processed in order to update the document ind inverted index. Therefore the document is loaded using the `DataLoader` implementation.
-Using this abstract document representation the document title is loaded. In order to filter out invalid and unneccesary documents the title is further analysed both on empty and non-english (`is_english` in `literature.y`) titles. In order to determine the language of the title the [pycld2](https://github.com/aboSamoor/pycld2)  python implementation of the Compact Langauge Detect 2 model is used. If one of these criteria is met the current document is discarded.
+In order to minimize the runtime of the document and inverted index construction the given data is processed in parrallel. Therefore the CORD-19 JSON files (file paths) are divided into chunks with a default size of 128 using the `create_chunks` function and are each processed in a parrallel manner using pythons `multiprocessing` library using the `process_chunk` function.
 
-After that the document index is updated based on the document title, the involved authors and institutions and the abstract. For those the preprocessing steps are applied as described in the previous sections. As a final step the inverted index is updated using the `update_inverted_index` function using the processed word stems for each document section (title, abstract, body).
+For each parallel `process_chunk` task a new database connection to the MongoDB is established. After that each filepath and document id tuple given by a data chunk is further processed in order to update the document index and inverted index. 
+
+In order to filter out invalid and unneccesary documents the title is analysed both for empty and non-english (`is_english` in `literature.y`) titles. In order to determine the language of the title the [pycld2](https://github.com/aboSamoor/pycld2)  python implementation of the Compact Langauge Detect 2 model is used. 
+
+After that the document index is updated based on the document title, the involved authors and institutions and the abstract. For those information the corresponding preprocessing steps are applied as described in the previous sections. As a final step the inverted index is updated using the `update_inverted_index` function using the processed word stems for each document section (title, abstract, body).
 
 
 ```python
@@ -140,8 +149,8 @@ def process_chunk(args, update_doc_idx=True, update_inv_indx=True)
 ```
 
 
-In the `update_inverted_index` function the inverted index is updated consecutively for each word stem using an adapted algorithm which is based on the algorithm shoown in Trucia et. al. [4]. Given a list of word stems with the corresponding number of ocurrences and a docuemt section the algorithm iterates over all word stems. If the word stem is not existent in the inverted index database the word stem is added to the database using a configured instance of the inverted index data model. Hereby the doc_id field is set to the current document id and the count section is initialized based on the count of the stem in the given section. All other sections are initialized to zero.
-If the stem was already added to the database the existence of the given doc_id in the data object is checked. If the document id is not in the data object. The document id with the correspronding count section is added to the data object. Given the case that the document id does exist in the data object only the number of occurences is updated.
+In the `update_inverted_index` function the inverted index is updated consecutively for each word stem using an adapted algorithm which is based on the algorithm provided by Trucia et. al. [4] where the inverted index is consecutively created by iterating over all given word stems. If the word stem is currently not existent in the inverted index database the word stem is added to the database using a configured instance of the inverted index data object. Hereby both the doc_id field and the count section are initialized based on the the given data. 
+If the stem was already added to the database the existence of the given doc_id in the data object is checked. If the document id is not in the data object. The document id with the correspronding count section is added to the list of document ids. If the document id does exist in the data object only the number of occurences in the given section is updated.
 
 
 <p align="center">
@@ -152,7 +161,7 @@ If the stem was already added to the database the existence of the given doc_id 
 
 #### Redis Cache
 
-Due to the lack of scalability of the default algorithm some additonal countermeasures are implemented in order to improve the database operations. Therefore the different database operations (connection, read, write) are benchmarked on a given database with approximately 20.000 processed documents. The results obtained from the tests are shown in Figure 2.
+Due to the lack of scalability of the default algorithm some additonal countermeasures are implemented in order to improve the performance of the database operations. Therefore the different database operations (connection, read, write) are benchmarked on a given database with approximately 20.000 processed documents. The results obtained from the tests are shown in Figure 2.
 
 
 <p align="center">
@@ -163,11 +172,11 @@ Due to the lack of scalability of the default algorithm some additonal counterme
 
 </br>
 
-Since the connection to the database is only established once for each processed chunk and is therefore performed significantly less frequently than the other operations, the runtime is not a problem here.
+Since the connection to the database is only established once for each processed chunk and is hence only performed significantly less frequently than the other operations, the runtime is not a problem here.
 
-However, the read access, which is carried out several times for each document, can be identified as a relevant bottleneck. In order to minimize the time required for a read access, an additional Redis cache is used, in which the most frequently used word stems and document IDs are managed.Through this measure the runtime of the inverted index construction can be improved significantly.
+However, the read access, which is carried out several times for each document, can be identified as a relevant bottleneck. In order to minimize the time required for a read access, an additional Redis cache is used, in which the most frequently used word stems and document IDs are managed. Through this measure the runtime of the inverted index construction can be improved significantly.
 
-The caching of entries is performed on in addition to each MongoDB using either the `update_cache_stem` or the `update_cache_doc_id` function. The queries `is_stem_existent` and `is_doc_id` existend instead of the plain MongoDB query (as described in the [Model Creation]() section). For both functions the lookup in the redis cache is the preffered method. If this does not return any result the MongoDB query is performed in order to obtain a reliable statement whether the wanted object does exist in the correct shape.
+The caching of entries is performed on in addition to the MongoDB using either the `update_cache_stem` or the `update_cache_doc_id` function. The queries `is_stem_existent` and `is_doc_ide_xistend` are used instead of the plain MongoDB query (as described in the [Model Creation]() section). For both functions the lookup in the redis cache is the preffered method. If this does not return any result the MongoDB query is performed in order to obtain a reliable statement whether the wanted object does exist in the correct state.
 
 ```python
 """
@@ -240,7 +249,7 @@ For the advanced information retrieval based on the document metadata a graph da
 
 ### Metadata Property Graph - Data Model
 
-Center of the data model is the `Document` node which contains properties both for the document title and the document id . In order to describe a given document in a more detailed way a direct bidirectional relations is created for at least one instance of the Author Node (name) which is again linked to an instance of the Institution Node (name). For each institution a geographical location is associated using an instance of the Country Node (name, code). In addition to the involved authors a connection to an Journal is established (if the journal is given in the metadata).
+Center of the data model is the `Document` node which contains properties both for the document title and the document id. In order to describe a given document in a more detailed way bidirectional relations are created for at least one instance of the Author Node (name) which is again linked to an instance of the Institution Node (name). For each institution a geographical location is associated using an instance of the Country Node (name, code). In addition to the involved authors a connection to q Journal Node is established (if the journal is given in the metadata file).
 
 </br>
 
@@ -249,12 +258,12 @@ Center of the data model is the `Document` node which contains properties both f
   <img width=40% src="../doc/property_graph.png">
 </p>
 
-**Fig 5:**
+**Fig 5:** Relations of the graph database nodes used in order to create the metadata property graph
 
 
 ### Model Creation
 
-The creation of the metadata property graph is performed in parralel as described previously for the document- and inverted index using an modified `process_chunk` function. For each file given in a chunk the document title, the journal name and the authors are determined using the utility functions as described in the [CORD-19 Preprocessing]() section. Each of these fields are checked for `None` values which are replaces by the string literal `undefined` in order to provide a valid data format for the Neo4j database. In a final step the given values are added in form of the previously described data object.
+The creation of the metadata property graph is performed in parralel as described previously for the document- and inverted index using an modified `process_chunk` function. For each file given in a chunk, the document title, the journal name and the authors are determined using the utility functions as described in the [CORD-19 Preprocessing]() section. Each of these fields are checked for `None` values which are replaces by the string literal `undefined` in order to provide a valid data format for the Neo4j database. In a final step the given values are added to the nep4j database using the relations model as described previously.
 
 ## References:
 [1] Christopher D. Manning, Prabhakar Raghavan, and Hinrich Schütze. 2008. Introduction to Information Retrieval. Cambridge University Press, USA.
