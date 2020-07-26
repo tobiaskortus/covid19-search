@@ -115,7 +115,7 @@ getQeryFromTerm = (searchTerm) => {...}
 
 ### Data retrieval from database
 
-The previously constructed query is then utilized in the `getDocumentIdsFromMongodb` function in order to return a list of document objects containing a nested list of matched document ids, and further information as described in the documentation of the [data model](), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. 
+The previously constructed query is then utilized in the `getDocumentIdsFromMongodb` function in order to return a list of document objects containing a nested list of matched document ids, and further information as described in the documentation of the [data model](../../procesing/../processing/README.md), with size <img src="https://render.githubusercontent.com/render/math?math=n"> where <img src="https://render.githubusercontent.com/render/math?math=n"> corresponds to the number of word stems in the query. 
 
 
 ```javascript
@@ -268,7 +268,7 @@ In order to enclose the search further, the search engine enables the user to fi
 groupFilters = (arr) => {...}
 ```
 
-Those grouped filters are then applied based on the filter category to the document ids that are matched to the current search term in parralel, using either the function `filterByCountries`, `filterByAuthor` or `filterByInstitution`. Afterward the results are merged using the same intersection technique as previously described in [Document Intersection](), as this technique has proven to be more efficient than applying the filters recursive on the list of document ids. 
+Those grouped filters are then applied based on the filter category to the document ids that are matched to the current search term in parralel, using either the function `filterByCountries`, `filterByAuthor` or `filterByInstitution`. Afterward the results are merged using the same intersection technique as previously described in [Document Intersection](#document-intersection), as this technique has proven to be more efficient than applying the filters recursive on the list of document ids. 
 
 
 ```javascript

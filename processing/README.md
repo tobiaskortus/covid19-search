@@ -259,7 +259,7 @@ Center of the data model used for the property graph is the `Document` node whic
 
 ### Model Creation
 
-The creation of the metadata property graph is performed in parralel as described previously for the document- and inverted index using an modified `process_chunk` function. For each file given in a chunk, the document title, the journal name and the authors and instittions are determined using the utility functions as described in the [CORD-19 Preprocessing]() section. Each of these fields are checked for `None` values which are replaces by the string literal `undefined` in order to provide a valid data format for the Neo4j database. In a final step the given values are added to the nep4j database using the relations model as described in the previous section.
+The creation of the metadata property graph is performed in parralel as described previously for the document- and inverted index using an modified `process_chunk` function. For each file given in a chunk, the document title, the journal name and the authors and instittions are determined using the utility functions as described in the [CORD-19 Preprocessing](#cord-19-preprocessing) section. Each of these fields are checked for `None` values which are replaces by the string literal `undefined` in order to provide a valid data format for the Neo4j database. In a final step the given values are added to the nep4j database using the relations model as described in the previous section.
 
 ## References:
 [1] Christopher D. Manning, Prabhakar Raghavan, and Hinrich Schütze. 2008. Introduction to Information Retrieval. Cambridge University Press, USA.

@@ -1,11 +1,11 @@
 # Web Application - Frontend
 
-The interface of an search engine is an elementary component for an efficient search and the visualization of the search results.
-In the following sections an overview over the main functionality of the search engine frontend application as well as the basic code structure behind this application should be given.
+The interface of an search engine is an elementary component for an efficient search process and the visualization of the search results in order to grasp the determined data as fast as possible.
+In the following sections an overview over the main functionality of the search engine frontend application, which was developed in order to provide the mentioned functionality in the context of the CORD-19 search engine, as well as the basic code structure behind this application should be described.
 
-## Ovierview - React Application
+## Overview - React Application
 
-In this application the following node packages are required in addition to the default packages:
+As a basic frame for the frontend application the javascript library React was used in order to provide an efficient way to structure the data in an interactive web application. On top of the provided functionality this application uses the following packages in order to provide additional content for both for the visualization of the data and the visual layout of the application:
 
 - amCharts: https://www.amcharts.com/
 - Bootstrap for React: https://react-bootstrap.github.io/
@@ -15,13 +15,14 @@ In this application the following node packages are required in addition to the 
 
 </br>
 
-The user interface, as depicted in Fig 1. provides the user with seven key features which are each used either in order to enable functionality for the ad-hoc or metatada search. Those features shall now be described in the following sections.
+The developed user interface, as depicted in Fig 1., which represents the main interaction element, provides the user with seven key features which are either used in order to enable the ad-hoc or metatada search functionality. Each of those elements are marked in the graphic below 
+and are each described in the following sections in the given order.
 
 <p align="center">
   <img  width=100% src="../../doc/overview_frontend.png">
 </p>
 
-**Fig 1:** High level layout of the search engine frontend application implemented using React.js including funcionality for both ad-hoc or metatada search.
+**Fig 1:** High level layout of the search engine frontend application, which was implemented using React.js, including functionality for both ad-hoc and metatada search.
 
 
 ### 1. Ad-Hoc Search
@@ -37,15 +38,25 @@ When a new search query is submitted either by pressing the search button or by 
 searchQueryChange = (searchTerm) => {...}
 ```
 
-In order to avoid redundant requests if the search query hasn't changed the query is checked before sending further requests to the backend. If the search term has changed a request is sent to the backend using the `loadDocuments` function. The recieved information is then saved into a state variable for further tasks.
+In order to avoid redundant requests if the search query hasn't changed since the last search request the query is checked before sending further requests to the backend. If the search term has changed, a request is sent to the backend using the `loadDocuments` function. The recieved information is then saved into a state variable for further processing and vizualization tasks.
+
+
+```javascript
+/**
+ * @param a given search query
+ */
+loadDocuments = (newQuery) => {...}
+```
 
 ### 2. Document  List
 
-The visualization of the search results which were determined in the ad-hoc information retrieval as described in the previos section is performed as in usual search engines as a list of documents containgin the basic information which are the document title, the authors involved in the paper and the first 500 characters from the papers abstract. This functionality is implemented in the `Documents` component which is updated each time the loadedDocuments state variable is changed by a new search request.
+The visualization of the search results which were determined in the ad-hoc information retrieval, as described in the previous section, is provided as implemented in well-known search engines as a list of documents containing basic information such as the document title, the authors involved in the paper and the first 500 characters from the papers abstract. This functionality is implemented in the `Documents` component which is updated each time the loadedDocuments state variable is changed by a new search request.
 
 ### 3. Additional Relevant Keyphrases
 
-For each search topic defined by a given search query the search engine identifies a set of keyphrases based on the documents which can be taken as a start point for a further analysis of the research environment. The list of keyphrases is updated each time a new search query is performed. When one of the keyphrases is selected by the user the given term is set as the new search query.
+For each search topic defined by a given search query, the search engine identifies a set of keyphrases based on the documents which can be taken as a starting point for a further analysis of the research environment. The list of keyphrases is updated each time a new search query is performed using the `loadDocument` function which communicates whith the backend over the `/search` endpoint (for further information refer to the [Backend Server](../backend/README.md) documentation). 
+The extracted keyphrases are then visualized using the `SimilarTopics` component as a container for the individual keyphrases which are displayed each using an instance of the `Badge.js` component.
+When one particular instance of the provided keyphrases is selected in the user interface by selecting one of the badges, the given keyphrase is set as the new search query.
 
 </br>
 
@@ -57,8 +68,6 @@ For each search topic defined by a given search query the search engine identifi
 
 </br>
 
-In the React application the extracted keyphrases are visualized using the `SimilarTopics` component as a container for the individual keyphrases which are displayed using the `Badge.js` component. The information used is fetched from the web application backend using the `loadDocuments` function which sends a http request, which is further described in the [Backend Server](../backend/README.md) documentation, to the `/search` endpoint of the backend.
-
 ### 4. Document Filters 
 
 In order to enclose the results obtained from the ad hoc search further a filter system can be used that currently contains the following filter categories:
@@ -66,9 +75,8 @@ In order to enclose the results obtained from the ad hoc search further a filter
 - institutions
 - authors
 
-The filters can hereby be selected either in the `WorldMap` component by selecting one of the scatter plot items or by selecting a author or a institution in the `Metadata` component.
-Further information on those components are provided in the [Document Metadata](#5-document-metadata) or the [Visualization of the Geographical Locations involved in a Paper](#6-visualization-of-the-geographical-locations-involved-in-a-paper) section.
-
+The filters can hereby be selected either in the `WorldMap` component by selecting one of the scatter plot items or by selecting an author or an institution in the `Metadata` component.
+Further information on those components are provided in the [Document Metadata](#5-document-metadata) or the [ Visualization of the Geographical Locations involved in a Paper](#6-visualization-of-the-geographical-locations-involved-in-a-paper) section.
 <p align="center">
   <img  width=50% src="../../doc/select_countries_filter.gif">
 </p>
@@ -77,7 +85,9 @@ Further information on those components are provided in the [Document Metadata](
 
 </br>
 
-After selecting a new filter from the previous categories the previous search results are updated automatically. The selected filters can also be deselected by removing it using the delete button of the unwanted filter. The information of the selected filters are represented for further processing in the backend using a javascript object with a category and value property defined:
+After selecting a new filter from the previous categories the current search results are updated automatically. The selected filters can also be deselected by removing it using the delete button of the unwanted filter. 
+
+The information of each selected filters are represented for further processing in the backend using a javascript object with a category and value property defined:
 
 ```json
 filter = {
@@ -86,15 +96,7 @@ filter = {
 }
 ```
 
-In order to update the search results with the currently selected filters applied the function `loadDocuments` function is used which sends a http request to the backend as previously described in the [Ad-hoc search](#1-ad-hoc-search) section. The `loadDocuments` function is called by the `selectFilter` which is in turn triggered by the visual components containing data that can be used as a filter (`WorldMap`, `Metadata`).
-
-```javascript
-/**
- * @param a given search query
- */
-loadDocuments = (newQuery) => {...}
-```
-
+In order to update the search results with the currently selected filters applied the function `loadDocuments` is used which sends a http request to the backend as previously described in the [Ad-hoc search bar]() section. The `loadDocuments` function is called by the `selectFilter` which is again triggered by the visual components containing data that can be used as a filter (`WorldMap`, `Metadata`).
 
 ### 5. Document Metadata
 
@@ -123,8 +125,9 @@ On the other hand the functions `onStatisticsClicked` and `onElementClicked` whi
 
 ### 6. Visualization of the Geographical Locations involved in a Paper
 
-In order to present the user a overview of the locations where published which can provide some additional insights expecially in a search context where geographical differences can result in different search results (e.g. mortality rates, reproduction number, etc.) the localization of the institutions involved in the publications are used as an indication of the affiliation of the paper. Cases where institutions of a specific country publish over a specific situation in another country are herby not taken into account.
+The visualization of an overview over the geographical locations of the document retrieved can provide some additional insights expecially in a search context where geographical differences can result in different search results (e.g. mortality rates, reproduction number, etc.). In order to provide this functionality in the this application the localization of the institutions involved in the publications are used as an indication of the affiliation of the paper. Cases where institutions of a specific country publish over a specific situation in another country are herby not taken into account.
 
+The extracted information is hereby provided the user via a world map which visualizes the absolute contribution of each country to the specified topic.
 <p align="center">
   <img  width=60% src="../../doc/map_chart.gif">
 </p>
@@ -145,7 +148,7 @@ loadCountries = () => {...}
 
 >Note: The displayed map provides a general overview of the global distribution of the publications and is therefore not updated based on selected filters.
 
-The data used in order to update the chart object is hereby loaded from the `/geo` endpoint of the backend and is returned in a structured type as a array of json objects with the following structure, which is then processed by the `WorldMap` component:
+The data used in order to update the chart object  is hereby loaded for each search term from the `/geo` endpoint of the backend and is returned in a structured type as a array of json objects with the following structure, which is then processed by the `WorldMap` component:
 
 ```json
 { 
