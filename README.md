@@ -32,7 +32,6 @@ The scope of the current state of the search engine lies on the processing of gi
 
 ## Quick Start
 
-
 ### Manual Installation
 
 #### Prerequisites
@@ -97,7 +96,24 @@ dataset
 | metadata.readme
 ```
 
-## Documentation of specific components
+## Architecture
+
+The following depiction describes a high level overview over the established architecture used for this project. A in detail description of each component is provided in the following component level documentation which are reffered in the section below.
+
+For this project a three-tier architecture was chosen in order to provide an independent layer for each of the main elements (presentation-tier (gui), application-tier (search engine), data-tier (data models)). This enables individual components of the architecture to be changed or redesigned with little effort. The established architecture which was developed around the two basic components for ad-hoc search providing suitable interfaces and processing steps in order to meet the requirements as described above in the [features](#features) section. The final architecture is displayed in the diagramm below:
+
+</br>
+
+
+<p align="center">
+  <img width=65% src="doc/search_engine_design.png">
+</p>
+
+**Fig 1** Established three-tier architecture used in order to provide the functionality required for the ad-hoc and metadata search functionality
+
+</br>
+
+## Documentation of the Specified Components (bottom up)
 
 - [document processing + construction of data models (CORD-19)](processing/README.md)
 - [web-application backend](web_application/backend/README.md)
