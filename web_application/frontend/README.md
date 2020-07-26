@@ -3,7 +3,7 @@
 The interface of an search engine is an elementary component for an efficient search process and the visualization of the search results in order to grasp the determined data as fast as possible.
 In the following sections an overview over the main functionality of the search engine frontend application, which was developed in order to provide the mentioned functionality in context of the CORD-19 search engine, as well as the basic code structure behind this application should be given.
 
-## Ovierview - React Application
+## Overview - React Application
 
 As a basic frame for the frontend application the javascript library React was used in order to provide an efficient way to structure the data in an interactive web application. On top of the provided functionality this application uses the following packages in order to provide additional content for both for the visualization of the data and the visual layout of the application:
 
