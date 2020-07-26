@@ -10,7 +10,7 @@
 </p>
 
 ## Description
-The opening literature research is a fundamental part of scientific work which takes oftain a substential ammount of time.  This problem is  further reinforced by the continuously increasing volume of scientific publications [1]. The goal of this work is the development of the basis for an intelligent search engine with the aim of supporting scientific literature research on the topic of COVID-19, providing the user additional information on the topic and the surroundings of the users individual research.
+The opening literature research is a fundamental part of scientific work which takes often a substential ammount of time.  This problem is  further reinforced by the continuously increasing volume of scientific publications [1]. The goal of this work is the development of the basis for an intelligent search engine with the aim of supporting scientific literature research on the topic of COVID-19, providing the user additional information on the topic and the surroundings of the users individual research.
 
 ## Features
 
@@ -26,8 +26,8 @@ The scope of the current state of the search engine lies on the processing of gi
 - **Query level metadata analysis:**
    - Query the statistic of the geographical location of institutions involved in a set of given papers, defined by a previous ad-hoc search request.
 - **Document level metadata analysis:**
-  -  Analyze the publication statistics of a specified author (currently: number of paper published)
-  -  Analyze the publication statistics of a specified institution (currently: number of paper published)
+  -  Analyze the publication statistics of a specified author (currently: number of papers published)
+  -  Analyze the publication statistics of a specified institution (currently: number of papers published)
 
 
 ## Quick Start
@@ -36,7 +36,7 @@ The scope of the current state of the search engine lies on the processing of gi
 
 #### Prerequisites
 
-- Mongo DB: https://www.mongodb.com/de
+- MongoDB: https://www.mongodb.com/de
 - Neo4j: https://neo4j.com/
 - Redis: https://redis.io/
 
@@ -50,7 +50,7 @@ The scope of the current state of the search engine lies on the processing of gi
 
 |Database|Port|
 |---|---|
-|Mongo DB|27017|
+|MongoDB|27017|
 |Neo4j|7687|
 |Redis|27018|
 
@@ -98,9 +98,8 @@ dataset
 
 ## Architecture
 
-The following depiction describes a high level overview over the established architecture used for this project. A in detail description of each component is provided in the following component level documentation which are reffered in the section below.
-
-For this project a three-tier architecture was chosen in order to provide an independent layer for each of the main elements (presentation-tier (gui), application-tier (search engine), data-tier (data models)). This enables individual components of the architecture to be changed or redesigned with little effort. The established architecture which was developed around the two basic components for ad-hoc search providing suitable interfaces and processing steps in order to meet the requirements as described above in the [features](#features) section. The final architecture is displayed in the diagramm below:
+The following depiction describes a high level overview over the established architecture used for this project. 
+For this project a three-tier architecture was chosen in order to provide an independent layer for each of the main elements (presentation-tier (gui), application-tier (search engine), data-tier (data models)). This enables individual components of the architecture to be changed or redesigned with little effort. The established architecture which was developed around the two basic components for ad-hoc search providing suitable interfaces and processing steps in order to meet the requirements as described above in the [features](#features) section. The corresponding in detail description of each component is provided in the following component level documentation which are referred in the section below.
 
 </br>
 
@@ -110,6 +109,8 @@ For this project a three-tier architecture was chosen in order to provide an ind
 </p>
 
 **Fig 1** Established three-tier architecture used in order to provide the functionality required for the ad-hoc and metadata search functionality
+
+
 
 </br>
 
@@ -124,7 +125,7 @@ For this project a three-tier architecture was chosen in order to provide an ind
 
 - Additional processing and extension of document metadata
 - Advanced search query processing &rarr; natural language understanding
-- Development of an document and database level knowledge graph in order to provide short answers to user given search queries
+- Development of a document and database level knowledge graph in order to provide short answers to user given search queries
 - Development of a web crawler in order to search for new literature in the area of COVID-19 or new topics
 - ...
 
