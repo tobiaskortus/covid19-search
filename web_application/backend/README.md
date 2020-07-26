@@ -11,7 +11,7 @@ The backend server is one of the main components of the search engine and functi
 
 ## API-endpoints
 
-The API of the backend can be devided into two enpoints each used for the ad-hoc search and for the metadata analysis. In the following section the available API Enpoints for those tasks are described in a high level (description, function calls, parameters). A detailed view over the fuctionality of the backend is described afterwards.
+The API of the backend can be divided into two enpoints each used for the ad-hoc search and for the metadata analysis. In the following section the available API enpoints for those tasks are described in a high level (description, function calls, parameters). A detailed view over the fuctionality of the backend is described afterwards.
 
 <p align="center">
   <img width=40% src="../../doc/web_server_backedn_api_endpoints.png">
@@ -20,7 +20,7 @@ The API of the backend can be devided into two enpoints each used for the ad-hoc
 ### Ad-hoc search
 
 
-**Description:** returns a subset of valid documents as well as suitable keyphrases based on a given query as well as additional information.
+**Description:** returns a subset of valid documents as well as suitable keyphrases based on a given query.
 
 ```javascript
 app.get('/search', (req, res) => {...}
@@ -28,8 +28,8 @@ app.get('/search', (req, res) => {...}
 
 |Request Parameter|Type|Description|
 |---|---|---
-|`term`|`string`|the search term that should used for the information retrieval task |
-|`page`|`int`|the current page (as displayed in frontent) that should be taken as a start point for the documents|
+|`term`|`string`|the search term that should be used for the information retrieval task |
+|`page`|`int`|the current page (as displayed in frontend) that should be taken as a starting point for the selection of the documents|
 |`numDocs`|`int`|number of documents to be loaded|
 
 
@@ -62,7 +62,7 @@ app.get('/document', (req, res) => {...}
 
 </br>
 
-#### Geographical statistic
+#### Geographical Statistic
 
 **Description:** returns a statistic of the geographical locations of institutions involved in a set of given papers (defined by the search term).
 
@@ -76,7 +76,7 @@ app.get('/geo', (req, res) => {...}
 
 |Respond Parameter|Type|Description|
 |---|---|---|
-|`countries`|`object`|contry statistics containing the country code (used for visualization), the name of the country, the number of documents for each country and a placeholder for the color variable (variable is set in frontend)|
+|`countries`|`object`|country statistics containing the country code (used for visualization), the name of the country, the number of documents for each country and a placeholder for the color variable (variable is set in frontend)|
 
 </br>
 
@@ -90,7 +90,7 @@ app.get(`/statistics`, (req, res) => {...}
 
 |Request Parameter|Type|Description|
 |---|---|---|
-|`type`|`string`|the type of statistic that sould be processed (either `'author'` or `'institution'`) |
+|`type`|`string`|the type of statistic that should be processed (either `'author'` or `'institution'`) |
 |`params`|`object`|additional parameters that are required in order to fetch the necessary data from the graph database|
 
 </br>
@@ -127,7 +127,7 @@ The previously constructed query is then utilized in the `getDocumentIdsFromMong
 getDocumentIdsFromMongodb = (query, dbo) => {...}
 ```
 
-These results are then consecutively rankedby their relevance regarding to the given search query, as described below, followed by an intersection of the given lists in order to return those documents that match all elements of the query. In a final step a subset of documents based on on the specified page and number of documents per pages, as defined in the request arguments, are loaded from the database using the `getDocumentsFromMongodb` function. 
+These results are then consecutively ranked by their relevance regarding to the given search query, as described below, followed by an intersection of the given lists in order to return those documents that match all elements of the query. In a final step a subset of documents based on on the specified page and number of documents per pages, as defined in the request arguments, are loaded from the database using the `getDocumentsFromMongodb` function. 
 
 ```javascript
 /**
@@ -137,7 +137,7 @@ These results are then consecutively rankedby their relevance regarding to the g
 getDocumentsFromMongodb = (doc_ids) => {...}
 ```
 
-As a second result of the ad-hoc search request a set of keyphrases that are relevant in the context of the given search term are processed. The query operation for the keyphrases is performed using the ten most relevant documents as determinded by the previously performed ranking using the `getKeyphrasesFromMongodb` function. The results containing the selected documents as well as the determined keyphrases are then concatinated into a single object and returned with the http response.
+As a second result of the ad-hoc search request a set of keyphrases that are relevant in the context of the given search term are processed. The query operation for the keyphrases is performed using the ten most relevant documents as determinded by the previously performed ranking using the `getKeyphrasesFromMongodb` function. The results containing the selected documents as well as the determined keyphrases are then concatenated into a single object and returned with the http response.
 
 ```javascript
 /**
@@ -148,7 +148,7 @@ As a second result of the ad-hoc search request a set of keyphrases that are rel
 getKeyphrasesFromMongodb = (query, dbo) => {...}
 ```
 
-In order to improve the performance of these operations, expecially when loading different pages for the same search query, a additional in-memory cache is implemented using a redis database. Hereby the processed result of a search query is stored in the redis cache using the `addDataToCache` function in order to seed up future requests which can be utilized using the `getDataFromCache` function. 
+In order to improve the performance of these operations, expecially when loading different pages for the same search query, an additional in-memory cache is implemented using a redis database. Hereby the processed result of a search query is stored in the redis cache using the `addDataToCache` function in order to speed up future requests which can be utilized using the `getDataFromCache` function. 
 
 
 ```javascript
@@ -195,7 +195,7 @@ The initial retrieved lists of document ids that was queried based on the word s
 
 With regards to the memory and runtime requirements it is recommended to perform these operations on the database level instead of the application level. Nevertheless in this project the mentioned operations were moved to the application layer in order to make adjustments in respect to the document ranking and implementation of different IR algorithms as dynamic as possible. Due to the small size of the data set, no significant restrictions in speed and memory consumtion are expected.
 
-The final intersection of the search results is performed based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm [1], where <img src="https://render.githubusercontent.com/render/math?math=n">  corresponds to the number of lists containing the ranked documents that were loaded from the database as described before. This operation is performed in the function `intersect` which uses an implementation of the 2-way-merge algorihm that is located in the `mergeIntersect` method.
+The final intersection of the search results is performed based on <img src="https://render.githubusercontent.com/render/math?math=n-1"> iterations of the 2-way-merge algorithm [1], where <img src="https://render.githubusercontent.com/render/math?math=n">  corresponds to the number of lists containing the ranked documents that were loaded from the database as described before. This operation is performed in the function `intersect` which uses an implementation of the 2-way-merge algorithm that is located in the `mergeIntersect` method.
 
 
 ```javascript
@@ -216,7 +216,7 @@ mergeIntersect = (L1, L2) => {...}
 ```
 
 
-#### Document ranking
+#### Document Ranking
 
 In order to determine a ranking of the importance of the documents based on a given query, as described in the previous sections, a document ranking is performed by the backend using the function `ranking`.
 
@@ -268,7 +268,7 @@ In order to enclose the search further, the search engine enables the user to fi
 groupFilters = (arr) => {...}
 ```
 
-Those grouped filters are then applied based on the filter category to the document ids that are matched to the current search term in parralel, using either the function `filterByCountries`, `filterByAuthor` or `filterByInstitution`. Afterward the results are merged using the same intersection technique as previously described in [Document Intersection](#document-intersection), as this technique has proven to be more efficient than applying the filters recursive on the list of document ids. 
+Those grouped filters are then applied based on the filter category to the document ids that are matched to the current search term in parallel, using either the function `filterByCountries`, `filterByAuthor` or `filterByInstitution`. Afterward the results are merged using the same intersection technique as previously described in [Document Intersection](#document-intersection), as this technique has proven to be more efficient than applying the filters recursive on the list of document ids. 
 
 
 ```javascript
@@ -292,10 +292,10 @@ filterByAuthor = (doc_ids, authors) => {...}
 filterByInstitution = (doc_ids, institutions) => {...}
 ```
 
-## Information retrieval - metadata
+## Information Retrieval - Metadata
 
-The following sections describes the basic functionality of the metadata analysis as a second information retrieval model in order to gain additional insights (on top of the ad-hoc search) on the research topic.
-The current state of the matadata analysis can be devided into two main topics which are designed to provide additional information each on the geographical statistics of the publications for a given ad-hoc search request and on the overall statistics of the dataset regarding to the publications of different authors and institutions.
+The following sections describe the basic functionality of the metadata analysis as a second information retrieval model in order to gain additional insights (on top of the ad-hoc search) on the research topic.
+The current state of the metadata analysis can be divided into two main topics which are designed to provide additional information each on the geographical statistics of the publications for a given ad-hoc search request and on the overall statistics of the dataset regarding to the publications of different authors and institutions.
 
 ### Geographical Statistics
 

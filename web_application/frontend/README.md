@@ -1,6 +1,6 @@
 # Web Application - Frontend
 
-The interface of an search engine is an elementary component for an efficient search process and the visualization of the search results in order to grasp the determined data as fast as possible.
+The interface of a search engine is an elementary component for an efficient search process and the visualization of the search results in order to grasp the determined data as fast as possible.
 In the following sections an overview over the main functionality of the search engine frontend application, which was developed in order to provide the mentioned functionality in the context of the CORD-19 search engine, as well as the basic code structure behind this application should be described.
 
 ## Overview - React Application
@@ -125,7 +125,7 @@ On the other hand the functions `onStatisticsClicked` and `onElementClicked` whi
 
 ### 6. Visualization of the Geographical Locations involved in a Paper
 
-The visualization of an overview over the geographical locations of the document retrieved can provide some additional insights expecially in a search context where geographical differences can result in different search results (e.g. mortality rates, reproduction number, etc.). In order to provide this functionality in the this application the localization of the institutions involved in the publications are used as an indication of the affiliation of the paper. Cases where institutions of a specific country publish over a specific situation in another country are herby not taken into account.
+The visualization of an overview over the geographical locations of the document retrieved can provide some additional insights expecially in a search context where geographical differences can result in different search results (e.g. mortality rates, reproduction number, etc.). In order to provide the mentioned functionality in this application the localization of the institutions involved in the publications are used as an indication of the affiliation of the paper. Cases where institutions of a specific country publish over a specific situation in another country are herby not taken into account.
 
 The extracted information is hereby provided the user via a world map which visualizes the absolute contribution of each country to the specified topic.
 <p align="center">
