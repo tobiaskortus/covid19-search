@@ -150,7 +150,7 @@ In the `update_inverted_index` function the inverted index is updated consecutiv
 
 
 <p align="center">
-  <img width=60% src="../doc/update_inverted_index.png">
+  <img width=50% src="../doc/update_inverted_index.png">
 </p>
 
 **Fig 2:** Algorithm used in order to update the inverted index model given the three different states the database model can be situated in.
